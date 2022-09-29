@@ -1,12 +1,13 @@
 package main
 
 import (
-	"fmt"
+//	"fmt"
 	"os"
 	"time"
+	"log"
 )
 
-// For simplicity we just suppose this is true
+// tech debt
 const (
 	EXIT_SUCCESS = 0
 	EXIT_FAILURE = 1
@@ -18,21 +19,33 @@ const (
 	REDUCER	= "REDUCER"
 )
 
+var (
+	WarningLoggerPtr	*log.Logger
+	InfoLoggerPtr		*log.Logger
+	ErrorLoggerPtr		*log.Logger
+)
 
 func main() {
+
+	InfoLoggerPtr = log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
+	WarningLoggerPtr = log.New(os.Stdout, "WARNING: ", log.Ldate|log.Ltime|log.Lshortfile)
+	ErrorLoggerPtr = log.New(os.Stderr, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
+
+	InfoLoggerPtr.Println("Starting app...")
 
 	for true {
 		switch os.Getenv("SDCC_ROLE") {
 		case MASTER:
-			fmt.Println(MASTER)
+			InfoLoggerPtr.Println("Starting master...")
 			goto exit
 		case MAPPER:
-			fmt.Println(MAPPER)
+			InfoLoggerPtr.Println("Starting mapper...")
 			goto exit
 		case REDUCER:
-			fmt.Println(REDUCER)
+			InfoLoggerPtr.Println("Starting reducer...")
 			goto exit
 		default:
+			WarningLoggerPtr.Println("SDCC_ROLE env is not set correctly.")
 			time.Sleep(time.Second)
 		}
 	}
