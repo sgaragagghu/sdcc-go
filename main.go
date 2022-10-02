@@ -37,9 +37,11 @@ func main() {
 		switch os.Getenv("SDCC_ROLE") {
 		case MASTER:
 			InfoLoggerPtr.Println("Starting master...")
+			master_main()
 			goto exit
 		case MAPPER:
 			InfoLoggerPtr.Println("Starting mapper...")
+			mapper_main()
 			goto exit
 		case REDUCER:
 			InfoLoggerPtr.Println("Starting reducer...")
