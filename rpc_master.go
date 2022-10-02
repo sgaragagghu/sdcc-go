@@ -13,10 +13,10 @@ func (h Master_handler) Send_heartbeat(args *Server, reply *int) error {
 }
 
 type Server struct {
-	id string
-	ip string
-	port string
-	last_heartbeat time.Time
-	role string
+	Id string
+	Ip string
+	Port string
+	Last_heartbeat time.Time
+	Role string
 }
 

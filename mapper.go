@@ -10,7 +10,7 @@ import (
 func mapper_main() {
 
 	// connect to server via rpc tcp
-	client, err := rpc.Dial("tcp", ":1200")
+	client, err := rpc.Dial("tcp", "172.18.0.254:1200")
 	defer client.Close()
 	if err != nil {
 		ErrorLoggerPtr.Fatal(err)
