@@ -4,13 +4,12 @@ import (
 	"net"
 	"net/rpc"
 	"reflect"
+	"time"
 
 	"github.com/elliotchance/orderedmap"
 )
 
-var (
-	Heartbeat_channel_ptr *<-chan Server
-)
+const MASTER_PORT = "9999"
 
 func heartbeat_goroutine() {
 
@@ -20,23 +19,34 @@ func heartbeat_goroutine() {
 
 	for {
 		select {
-		case heartbeat := <-*Heartbeat_channel_ptr:
-			element_temp := linked_hashmap.GetElement(heartbeat.Id)
+		case heartbeat_ptr := <-*Heartbeat_channel_ptr:
+			element_temp := linked_hashmap.GetElement(heartbeat_ptr.Id)
 			var server_temp_ptr *Server
 			if element_temp != nil {
 				server_temp_ptr = element_temp.Value.(*Server)
-				server_temp_ptr.Last_heartbeat = heartbeat.Last_heartbeat
-				linked_hashmap.Delete(heartbeat.Id) // TODO check error (COPIARE PRIMA DI ELIMINARE.... memcp)
+				server_temp_ptr.Last_heartbeat = heartbeat_ptr.Last_heartbeat
+				if !linked_hashmap.Delete(heartbeat_ptr.Id) { // TODO Check: could work without deletion
+					ErrorLoggerPtr.Fatal("Unexpected error")
+				}
 			} else {
-				// TODO build the server...
-				server_temp_ptr.Last_heartbeat = heartbeat.Last_heartbeat
+				// TODO write on chan that there's a new server
+				*server_temp_ptr = *heartbeat_ptr
 			}
-			linked_hashmap.Set(server_temp_ptr.Id, *server_temp_ptr) // TODO check error (e anche controllare che non serve in realta' il puntatore..) 
+			linked_hashmap.Set(server_temp_ptr.Id, *server_temp_ptr) // TODO is it efficient ? 
 			InfoLoggerPtr.Println("received heartbeat")
 		default:
 		}
 
-		// TODO controllare le scadenze
+		for el := linked_hashmap.Front(); el != nil;  {
+			server_temp_ptr := el.Value.(*Server)
+			el = el.Next()
+			if server_temp_ptr.Last_heartbeat.Unix() > time.Now().Unix() - EXPIRE_TIME {
+				if !linked_hashmap.Delete(server_temp_ptr.Id) {
+					ErrorLoggerPtr.Fatal("Unexpected error")
+				}
+				// TODO write on chan that this server is dead
+			}
+		}
 	}
 }
 
@@ -44,7 +54,7 @@ func master_main() {
 
 	// creating channel for communicating the heartbeat
 	// to the goroutine heartbeat manager
-	Heartbeat_channel_ptr = new(<-chan Server)
+	Heartbeat_channel_ptr = new(<-chan *Server)
 
 	go heartbeat_goroutine()
 
@@ -54,7 +64,7 @@ func master_main() {
 	rpc.Register(master_handler)
 
 	// service address of server
-	service := ":1200"
+	service := ":" + MASTER_PORT
 
 	// create tcp address
 	tcpAddr, err := net.ResolveTCPAddr("tcp", service)
@@ -79,7 +89,7 @@ func master_main() {
 		InfoLoggerPtr.Println("received message", reflect.TypeOf(conn), conn)
 
 		// handle client connections via rpc
-		rpc.ServeConn(conn)
+		go rpc.ServeConn(conn)
 	}
 
 }

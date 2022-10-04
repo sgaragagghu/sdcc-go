@@ -4,6 +4,12 @@ import (
 	"time"
 )
 
+const EXPIRE_TIME = 10
+
+var (
+	Heartbeat_channel_ptr *<-chan *Server
+)
+
 // create a type to get an interface
 type Master_handler int
 

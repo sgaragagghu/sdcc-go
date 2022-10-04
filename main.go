@@ -19,6 +19,10 @@ const (
 	REDUCER	= "REDUCER"
 )
 
+const APP_ID = "SDCC"
+
+const MASTER_IP = "172.18.0.254"
+
 var (
 	WarningLoggerPtr	*log.Logger
 	InfoLoggerPtr		*log.Logger
