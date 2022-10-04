@@ -35,18 +35,18 @@ func heartbeat_goroutine() {
 			linked_hashmap.Set(server_temp_ptr.Id, *server_temp_ptr) // TODO is it efficient ? 
 			InfoLoggerPtr.Println("received heartbeat")
 		default:
-		}
-
-		for el := linked_hashmap.Front(); el != nil;  {
-			server_temp_ptr := el.Value.(*Server)
-			el = el.Next()
-			if server_temp_ptr.Last_heartbeat.Unix() > time.Now().Unix() - EXPIRE_TIME {
-				if !linked_hashmap.Delete(server_temp_ptr.Id) {
-					ErrorLoggerPtr.Fatal("Unexpected error")
+			for el := linked_hashmap.Front(); el != nil;  {
+				server_temp_ptr := el.Value.(*Server)
+				el = el.Next()
+				if server_temp_ptr.Last_heartbeat.Unix() > time.Now().Unix() - EXPIRE_TIME {
+					if !linked_hashmap.Delete(server_temp_ptr.Id) {
+						ErrorLoggerPtr.Fatal("Unexpected error")
+					}
+					// TODO write on chan that this server is dead
 				}
-				// TODO write on chan that this server is dead
 			}
 		}
+		time.Sleep()
 	}
 }
 
