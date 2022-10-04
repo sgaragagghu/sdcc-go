@@ -45,8 +45,8 @@ func heartbeat_goroutine() {
 					// TODO write on chan that this server is dead
 				}
 			}
+			time.Sleep()
 		}
-		time.Sleep()
 	}
 }
 
