@@ -1,10 +1,13 @@
 package main
 
 import (
-//	"fmt"
+	"fmt"
 	"os"
+	"io/ioutil"
+	"strconv"
 	"time"
 	"net/rpc"
+	"crypto/sha256"
 )
 
 var (
@@ -32,12 +35,29 @@ func heartbeat(client *rpc.Client) {
 }
 
 func init() {
-	id := os.Getenv("UUID") + APP_ID 
-	if id == APP_ID {
-		ErrorLoggerPtr.Fatal("There is no UUID")
-	}
 
 	ip := GetOutboundIP().String()
+	var id string
+
+	bytes, err := ioutil.ReadFile("./ID")
+	if string(bytes) == "" || err != nil {
+
+		id = ip + MAPPER_PORT + APP_ID + strconv.FormatInt(time.Now().Unix(), 10)
+		id = fmt.Sprintf("%x", sha256.Sum256([]byte(id)))
+
+		file, err := os.Create("./ID")
+		if err != nil {
+			ErrorLoggerPtr.Fatal("Cannot create ID file.", err)
+		}
+		file.WriteString(id)
+		file.Close()
+	} else {
+		id = string(bytes)
+	}
+
+	if id == "" {
+		ErrorLoggerPtr.Fatal("Empty ID.", err)
+	}
 
 	server = &Server{id, ip, MAPPER_PORT, time.Now(), "MAPPER"}
 }

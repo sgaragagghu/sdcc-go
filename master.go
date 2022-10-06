@@ -45,7 +45,7 @@ func heartbeat_goroutine() {
 					// TODO write on chan that this server is dead
 				}
 			}
-			time.Sleep()
+			time.Sleep(1)
 		}
 	}
 }
@@ -54,7 +54,7 @@ func master_main() {
 
 	// creating channel for communicating the heartbeat
 	// to the goroutine heartbeat manager
-	Heartbeat_channel_ptr = new(<-chan *Server)
+	Heartbeat_channel_ptr = new(chan *Server)
 
 	go heartbeat_goroutine()
 

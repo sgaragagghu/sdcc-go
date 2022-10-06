@@ -29,11 +29,16 @@ var (
 	ErrorLoggerPtr		*log.Logger
 )
 
-func main() {
+func init() {
 
 	InfoLoggerPtr = log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
 	WarningLoggerPtr = log.New(os.Stdout, "WARNING: ", log.Ldate|log.Ltime|log.Lshortfile)
 	ErrorLoggerPtr = log.New(os.Stderr, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
+	
+}
+
+
+func main() {
 
 	InfoLoggerPtr.Println("Starting app...")
 
