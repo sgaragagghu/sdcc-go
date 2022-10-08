@@ -4,7 +4,10 @@ import (
 	"time"
 )
 
-const EXPIRE_TIME = 10
+const (
+	EXPIRE_TIME = 10
+	MASTER_PORT = "9999"
+)
 
 var (
 	Heartbeat_channel_ptr *chan *Server

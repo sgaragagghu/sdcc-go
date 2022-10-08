@@ -8,13 +8,13 @@ import (
 	"time"
 	"net/rpc"
 	"crypto/sha256"
+	"net"
+	"reflect"
 )
 
 var (
 	server *Server
 )
-
-const MAPPER_PORT = "6667"
 
 func heartbeat(client *rpc.Client) {
 
@@ -71,7 +71,47 @@ func mapper_main() {
 		ErrorLoggerPtr.Fatal(err)
 	}
 
+	// creating channel for communicating the task
+	// to the goroutine task manager
+	Task_channel_ptr = new(chan *Task)
+
+	//go task_goroutine()
+
+
 	go heartbeat(client)
 
+	mapper_handler := new(Mapper_handler)
+
+	// register Mapper_handler as RPC interface
+	rpc.Register(mapper_handler)
+
+	// service address of server
+	service := ":" + MAPPER_PORT
+
+	// create tcp address
+	tcpAddr, err := net.ResolveTCPAddr("tcp", service)
+	if err != nil {
+		ErrorLoggerPtr.Fatal(err)
+	}
+
+	// tcp network listener
+	listener, err := net.ListenTCP("tcp", tcpAddr)
+	if err != nil {
+		ErrorLoggerPtr.Fatal(err)
+	}
+
+	for {
+		// handle tcp mapper connections
+		conn, err := listener.Accept()
+		if err != nil {
+			WarningLoggerPtr.Println("listener accept error:", err)
+		}
+
+		// print connection info
+		InfoLoggerPtr.Println("received message", reflect.TypeOf(conn), conn)
+
+		// handle mapper connections via rpc
+		go rpc.ServeConn(conn)
+	}
 }
 

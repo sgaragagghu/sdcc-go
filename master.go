@@ -9,8 +9,6 @@ import (
 	"github.com/elliotchance/orderedmap"
 )
 
-const MASTER_PORT = "9999"
-
 func heartbeat_goroutine() {
 
 	InfoLoggerPtr.Println("Heartbeat_goroutine started.")
