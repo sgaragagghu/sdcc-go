@@ -23,6 +23,8 @@ const APP_ID = "SDCC"
 
 const MASTER_IP = "172.18.0.254"
 
+const SECOND = 1000000000
+
 var (
 	WarningLoggerPtr	*log.Logger
 	InfoLoggerPtr		*log.Logger

@@ -28,10 +28,10 @@ func heartbeat_goroutine() {
 				}
 			} else {
 				// TODO write on chan that there's a new server
-				*server_temp_ptr = *heartbeat_ptr
+				server_temp_ptr = heartbeat_ptr
 			}
-			linked_hashmap.Set(server_temp_ptr.Id, *server_temp_ptr) // TODO is it efficient ? 
-			InfoLoggerPtr.Println("received heartbeat")
+			linked_hashmap.Set(server_temp_ptr.Id, server_temp_ptr) // TODO is it efficient ? 
+			//InfoLoggerPtr.Println("received heartbeat")
 		default:
 			for el := linked_hashmap.Front(); el != nil;  {
 				server_temp_ptr := el.Value.(*Server)
@@ -43,7 +43,8 @@ func heartbeat_goroutine() {
 					// TODO write on chan that this server is dead
 				}
 			}
-			time.Sleep(1)
+			//InfoLoggerPtr.Println("Heartbeat gorountine sleeping")
+			time.Sleep(SECOND)
 		}
 	}
 }
@@ -52,7 +53,8 @@ func master_main() {
 
 	// creating channel for communicating the heartbeat
 	// to the goroutine heartbeat manager
-	Heartbeat_channel_ptr = new(chan *Server)
+	Heartbeat_channel := make(chan *Server, 1000)
+	Heartbeat_channel_ptr = &Heartbeat_channel
 
 	go heartbeat_goroutine()
 
