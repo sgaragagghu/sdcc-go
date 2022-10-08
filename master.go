@@ -9,6 +9,13 @@ import (
 	"github.com/elliotchance/orderedmap"
 )
 
+var (
+	add_mapper_channel_ptr *chan *Server
+	rem_mapper_channel_ptr *chan *Server
+	job_completed_channel_ptr *chan *Server
+)
+
+
 func heartbeat_goroutine() {
 
 	InfoLoggerPtr.Println("Heartbeat_goroutine started.")
@@ -32,7 +39,7 @@ func heartbeat_goroutine() {
 			}
 			linked_hashmap.Set(server_temp_ptr.Id, server_temp_ptr) // TODO is it efficient ? 
 			//InfoLoggerPtr.Println("received heartbeat")
-		default:
+		case <-time.After(SECOND):
 			for el := linked_hashmap.Front(); el != nil;  {
 				server_temp_ptr := el.Value.(*Server)
 				el = el.Next()
@@ -43,8 +50,23 @@ func heartbeat_goroutine() {
 					// TODO write on chan that this server is dead
 				}
 			}
-			//InfoLoggerPtr.Println("Heartbeat gorountine sleeping")
-			time.Sleep(SECOND)
+		}
+	}
+}
+
+func scheduler_mapper_goroutine() {
+	InfoLoggerPtr.Println("Scheduler_mapper_goroutine started.")
+
+	linked_hashmap := orderedmap.NewOrderedMap()
+	linked_hashmap = linked_hashmap
+	for {
+		select {
+		case rem_mapper_ptr := <-*rem_mapper_channel_ptr:
+			rem_mapper_ptr = rem_mapper_ptr
+		case add_mapper_ptr := <-*add_mapper_channel_ptr:
+			add_mapper_ptr = add_mapper_ptr
+		case job_completed_ptr := <-*job_completed_channel_ptr:
+			job_completed_ptr = job_completed_ptr
 		}
 	}
 }
@@ -53,9 +75,28 @@ func master_main() {
 
 	// creating channel for communicating the heartbeat
 	// to the goroutine heartbeat manager
-	Heartbeat_channel := make(chan *Server, 1000)
-	Heartbeat_channel_ptr = &Heartbeat_channel
+	heartbeat_channel := make(chan *Server, 1000)
+	Heartbeat_channel_ptr = &heartbeat_channel
 
+
+	// creating channel for communicating the connected
+	// and disconnected workers to the scheduler
+	add_mapper_channel := make(chan *Server, 1000)
+	add_mapper_channel_ptr = &add_mapper_channel
+	rem_mapper_channel := make(chan *Server, 1000)
+	rem_mapper_channel_ptr = &rem_mapper_channel
+
+	add_mapper_channel_ptr = add_mapper_channel_ptr
+	rem_mapper_channel_ptr = rem_mapper_channel_ptr
+
+	//creating channel for communicating ended jobs
+	job_completed_channel := make(chan *Server, 1000)
+	job_completed_channel_ptr = &job_completed_channel
+
+	job_completed_channel_ptr = job_completed_channel_ptr
+
+	go scheduler_mapper_goroutine()
+	go scheduler_mapper_goroutine()
 	go heartbeat_goroutine()
 
 	master_handler := new(Master_handler)

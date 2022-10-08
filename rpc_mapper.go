@@ -7,20 +7,22 @@ import (
 const MAPPER_PORT = "6668"
 
 var (
-	Task_channel_ptr *chan *Task
+	Job_channel_ptr *chan *Job
 )
 
 // create a type to get an interface
 type Mapper_handler int
 
-type Task struct {
+type Job struct {
 	Id string
+	Task_id string
+	Server_id string
 	Payload string
 }
 
 
-func (h Mapper_handler) Send_task(args *Task, reply *int) error {
-	*Task_channel_ptr <- args
+func (h Mapper_handler) Send_task(args *Job, reply *int) error {
+	*Job_channel_ptr <- args
 	return nil
 }
 

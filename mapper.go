@@ -73,7 +73,7 @@ func mapper_main() {
 
 	// creating channel for communicating the task
 	// to the goroutine task manager
-	Task_channel_ptr = new(chan *Task)
+	Job_channel_ptr = new(chan *Job)
 
 	//go task_goroutine()
 
