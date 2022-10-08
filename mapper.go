@@ -29,7 +29,8 @@ func heartbeat(client *rpc.Client) {
 		if err != nil {
 			ErrorLoggerPtr.Fatal("Heartbeat error:", err)
 		}
-		time.Sleep(EXPIRE_TIME / 2)
+		InfoLoggerPtr.Println("Heartbeat sent.")
+		time.Sleep(EXPIRE_TIME * SECOND / 2)
 	}
 
 }
