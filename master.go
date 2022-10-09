@@ -12,7 +12,6 @@ import (
 var (
 	add_mapper_channel_ptr *chan *Server
 	rem_mapper_channel_ptr *chan *Server
-	job_completed_channel_ptr *chan *Server
 )
 
 
@@ -57,16 +56,34 @@ func heartbeat_goroutine() {
 func scheduler_mapper_goroutine() {
 	InfoLoggerPtr.Println("Scheduler_mapper_goroutine started.")
 
-	linked_hashmap := orderedmap.NewOrderedMap()
-	linked_hashmap = linked_hashmap
+	idle_mapper_hashmap := make(map[string]*Server)
+	working_mapper_hashmap := make(map[string]*Server)
+
+
+
 	for {
 		select {
 		case rem_mapper_ptr := <-*rem_mapper_channel_ptr:
-			rem_mapper_ptr = rem_mapper_ptr
+			if _, ok := idle_mapper_hashmap[rem_mapper_ptr.Id]; ok {
+				delete(idle_mapper_hashmap, rem_mapper_ptr.Id)
+			} else if server, ok := working_mapper_hashmap; ok {
+				if len(idle_mapper_hashmap) {
+					//- call a function to send the job to the server
+					//- assign the job to the first
+					delete(working_mapper_hashmap)
+				} else {
+					//- add the job to a "new" job channel (i still have to create the channel)
+				}
+			}
 		case add_mapper_ptr := <-*add_mapper_channel_ptr:
 			add_mapper_ptr = add_mapper_ptr
-		case job_completed_ptr := <-*job_completed_channel_ptr:
+		case job_completed_ptr := <-*Job_completed_channel_ptr:
 			job_completed_ptr = job_completed_ptr
+			//- if theres a job in the job channel, send it to the server which has just completed the job
+			//- if task completed then start the next task in Task_channel_ptr
+		case new_task_event_ptr := <-*New_task_event_channel_ptr:
+			new_task_event_ptr=new_task_event_ptr
+			//- if the system is in idle then start the next task in Task_channel_ptr
 		}
 	}
 }
@@ -91,11 +108,22 @@ func master_main() {
 
 	//creating channel for communicating ended jobs
 	job_completed_channel := make(chan *Server, 1000)
-	job_completed_channel_ptr = &job_completed_channel
+	Job_completed_channel_ptr = &job_completed_channel
 
-	job_completed_channel_ptr = job_completed_channel_ptr
+	Job_completed_channel_ptr = Job_completed_channel_ptr
 
-	go scheduler_mapper_goroutine()
+	//creating channel for communicating new task event
+	new_task_event_channel := make(chan *Server, 1000)
+	New_task_event_channel_ptr = &new_task_event_channel
+
+	New_task_event_channel_ptr = New_task_event_channel_ptr
+
+	//creating channel for communicating new task
+	task_channel := make(chan *Server, 1000)
+	Task_channel_ptr = &task_channel
+
+	Task_channel_ptr = Task_channel_ptr
+
 	go scheduler_mapper_goroutine()
 	go heartbeat_goroutine()
 

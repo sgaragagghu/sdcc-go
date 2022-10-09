@@ -11,6 +11,9 @@ const (
 
 var (
 	Heartbeat_channel_ptr *chan *Server
+	Job_completed_channel_ptr *chan *Server
+	New_task_event_channel_ptr *chan *Server
+	Task_channel_ptr *chan *Server
 )
 
 // create a type to get an interface
@@ -21,6 +24,7 @@ type Server struct {
 	Ip string
 	Port string
 	Last_heartbeat time.Time
+	Jobs *map[string]*Job
 	Role string
 }
 
