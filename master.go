@@ -56,9 +56,9 @@ func heartbeat_goroutine() {
 func scheduler_mapper_goroutine() {
 	InfoLoggerPtr.Println("Scheduler_mapper_goroutine started.")
 
+	job_channel := make(chan *Job, 1000)
 	idle_mapper_hashmap := make(map[string]*Server)
 	working_mapper_hashmap := make(map[string]*Server)
-
 
 
 	for {
@@ -66,24 +66,48 @@ func scheduler_mapper_goroutine() {
 		case rem_mapper_ptr := <-*rem_mapper_channel_ptr:
 			if _, ok := idle_mapper_hashmap[rem_mapper_ptr.Id]; ok {
 				delete(idle_mapper_hashmap, rem_mapper_ptr.Id)
-			} else if server, ok := working_mapper_hashmap; ok {
-				if len(idle_mapper_hashmap) {
-					//- call a function to send the job to the server
-					//- assign the job to the first
-					delete(working_mapper_hashmap)
-				} else {
-					//- add the job to a "new" job channel (i still have to create the channel)
+			} else if server, ok := working_mapper_hashmap[rem_mapper_ptr.Id]; ok {
+				jobs_ptr := server.Jobs
+				for _, job_ptr := range *jobs_ptr {
+					if len(idle_mapper_hashmap) > 0 {
+						//- call a function to send the job to the server
+						//- assign the job to the first
+					} else {
+						select {
+						case job_channel <- job_ptr:
+						default:
+							ErrorLoggerPtr.Fatal("job_channel queue full") // TODO handle this case...
+						}
+					}
 				}
+			delete(working_mapper_hashmap, rem_mapper_ptr.Id)
 			}
 		case add_mapper_ptr := <-*add_mapper_channel_ptr:
 			add_mapper_ptr = add_mapper_ptr
 		case job_completed_ptr := <-*Job_completed_channel_ptr:
 			job_completed_ptr = job_completed_ptr
-			//- if theres a job in the job channel, send it to the server which has just completed the job
-			//- if task completed then start the next task in Task_channel_ptr
+			select {
+			case job_ptr := <-job_channel:
+				//- send it to the server which has just completed the job
+			default:
+			}
+			if len(working_mapper_hashmap) == 0 && len(*Task_channel_ptr) > 0 { // if the curent task finished and theres a task
+				/*
+				select {
+				case New_task_event_channel_ptr <-[TODO: HERE CREATE THE EVENT]:
+				default:
+				}
+				*/
+			}
 		case new_task_event_ptr := <-*New_task_event_channel_ptr:
 			new_task_event_ptr=new_task_event_ptr
-			//- if the system is in idle then start the next task in Task_channel_ptr
+			if len(working_mapper_hashmap) == 0 { // if the curent task finished
+				select {
+				case task := <-*Task_channel_ptr:
+					// start the new task...
+				default:
+				}
+			}
 		}
 	}
 }
