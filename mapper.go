@@ -16,7 +16,7 @@ var (
 	server *Server
 )
 
-func heartbeat(client *rpc.Client) {
+func heartbeat_goroutine(client *rpc.Client) {
 
 	var (
 		reply	int
@@ -33,6 +33,27 @@ func heartbeat(client *rpc.Client) {
 		time.Sleep(EXPIRE_TIME * SECOND / 2)
 	}
 
+}
+
+func task_manager_goroutine() {
+
+	// state := IDLE
+	task_hashmap := make(map[string]*Job)
+
+	select {
+	case job_ptr := <-*Job_channel_ptr:
+		// aggiungere al task_hashmap (controllare se gia' presente allora aggiungere i singoli jobbini)
+		// if state == IDLE
+		// push into ready event channel (to make it)
+	// case job_finished_ptr := <-job_finishes_channel:
+		// remove the job from the task hashmap
+		// push into ready event channel (to make it)
+	//case ready_event := <-ready_event_channel:
+		// go job_ptr.Algorithm(job_ptr.Payload)
+		// state = BUSY	
+
+
+	}
 }
 
 func init() {
@@ -79,7 +100,7 @@ func mapper_main() {
 	//go task_goroutine()
 
 
-	go heartbeat(client)
+	go heartbeat_goroutine(client)
 
 	mapper_handler := new(Mapper_handler)
 
