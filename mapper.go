@@ -81,7 +81,7 @@ func init() {
 		ErrorLoggerPtr.Fatal("Empty ID.", err)
 	}
 
-	server = &Server{id, ip, MAPPER_PORT, time.Now(), "MAPPER"}
+	server = &Server{id, ip, MAPPER_PORT, time.Now(), nil, "MAPPER"}
 }
 
 func mapper_main() {
