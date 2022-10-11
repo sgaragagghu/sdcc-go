@@ -10,6 +10,13 @@ import (
 	"crypto/sha256"
 	"net"
 	"reflect"
+
+	"github.com/golang-ds/linkedlist"
+)
+
+const (
+	IDLE = "IDLE"
+	BUSY = "BUSY"
 )
 
 var (
@@ -37,22 +44,73 @@ func heartbeat_goroutine(client *rpc.Client) {
 
 func task_manager_goroutine() {
 
-	// state := IDLE
-	task_hashmap := make(map[string]*Job)
+	state := IDLE
+	task_hashmap := make(map[string]*LinkedList)
+	ready_event_channel := make(chan struct{}, 1000)
+	job_finished_channel := make(chan *Job, 1000)
+	job_finished_channel_ptr = &job_finished_channel
 
-	select {
-	case job_ptr := <-*Job_channel_ptr:
-		// aggiungere al task_hashmap (controllare se gia' presente allora aggiungere i singoli jobbini)
-		// if state == IDLE
-		// push into ready event channel (to make it)
-	// case job_finished_ptr := <-job_finishes_channel:
-		// remove the job from the task hashmap
-		// push into ready event channel (to make it)
-	//case ready_event := <-ready_event_channel:
-		// go job_ptr.Algorithm(job_ptr.Payload)
-		// state = BUSY	
+	for {
+		select {
+		case job_ptr := <-*Job_channel_ptr:
+		job_list_ptr, ok := task_hashmap[job_ptr.Task_id]
+		if ok {
+			job_list.AddLast(job_ptr)
+		} else  {
+			job_list_ptr = new([*Job])
+			job_list.AddLast(job_ptr)
+			task_hashmap[Task_id] = job_list
+		}
+		job_list.AddLast(job_ptr)
 
+		if state == IDLE {
+			select {
+			case ready_event_channel <- struct{}{}:
+			default:
+				ErrorLoggerPtr.Fatal("ready_event_channel is full.")
+			}
+		}
+		case job_finished_ptr := <-*job_finished_channel_ptr:
+			if job_list_ptr, ok := task_hashmap[job_finished_ptr.Task_id] {
+				job_list_ptr.RemoveFirst()
+				if len(job_list_ptr) == 0 {
+					delete (task_hashmap, job_finished_ptr.Task_id)
+				}
+			} else {
+				ErrorLoggerPtr.Fatal("Finished job not found!")
+			}
 
+			if len(task_hashmap) > 0 {
+				select{
+				case ready_event_channel <- struct{}{}:
+				default:
+					ErrorLoggerPtr.Fatal("ready_event_channel is full.")
+				}
+			}
+
+			state = IDLE
+
+		case ready_event := <-ready_event_channel:
+			if state == IDLE {
+				if len(task_hashmap) {
+					min := -1
+					for task_id, _ := range task_hashmap { // TODO change the hashmap with an ordered one.
+						task_id_int, err := Atoi(task_id)
+						if err != nil {
+							ErrorLoggerPtr.Fatal("String to integer error:", err) // TODO consider to use a integer instead of a string.
+						}
+						if min == -1 || min > task_id_int {
+							min = task_id_int
+						}
+					}
+					job_ptr := task_hashmap[Itoa(task_id_int)].First()
+					// go job_ptr.Algorithm(job_ptr.Payload, job_finished_channel_ptr)
+					state = BUSY
+				} else {
+					ErrorLoggerPtr.Fatal("Unexpected empty task hashmap.")
+				}
+			}
+		}
 	}
 }
 
