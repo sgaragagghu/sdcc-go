@@ -1,6 +1,8 @@
-package main
+package rpc_master
 
 import (
+//	. "../share"
+	. "../rpc_mapper"
 	"time"
 )
 

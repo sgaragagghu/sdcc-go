@@ -1,6 +1,9 @@
-package main
+package mapper
 
 import (
+	. "../share"
+	. "../rpc_mapper"
+	. "../rpc_master"
 	"fmt"
 	"os"
 	"io/ioutil"

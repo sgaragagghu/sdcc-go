@@ -1,6 +1,9 @@
-package main
+package master
 
 import (
+	. "../share"
+	. "../rpc_master"
+	. "../rpc_mapper"
 	"net"
 	"net/rpc"
 	"reflect"

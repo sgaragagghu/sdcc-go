@@ -1,7 +1,7 @@
-package main
+package rpc_mapper
 
 import (
-//	"time"
+//	. "../share"
 )
 
 const MAPPER_PORT = "6668"
