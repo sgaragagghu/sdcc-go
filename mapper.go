@@ -42,6 +42,16 @@ func heartbeat_goroutine(client *rpc.Client) {
 
 }
 
+func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
+
+	// job_ptr.Res = job_ptr.Algorithm(job_ptr.Payload)
+	select {
+	case *chan_ptr <- job_ptr:
+	default:
+		ErrorLoggerPtr.Fatal("Finished job channel full.")
+	}
+}
+
 func task_manager_goroutine() {
 
 	state := IDLE
@@ -104,7 +114,7 @@ func task_manager_goroutine() {
 						}
 					}
 					job_ptr := task_hashmap[Itoa(task_id_int)].First()
-					// go job_ptr.Algorithm(job_ptr.Payload, job_finished_channel_ptr)
+					go job_manager_goroutine(job_ptr, job_finished_channel_ptr)
 					state = BUSY
 				} else {
 					ErrorLoggerPtr.Fatal("Unexpected empty task hashmap.")
