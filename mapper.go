@@ -10,8 +10,7 @@ import (
 	"crypto/sha256"
 	"net"
 	"reflect"
-
-	"github.com/golang-ds/linkedlist"
+	"container/list"
 )
 
 const (
@@ -55,23 +54,22 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 func task_manager_goroutine() {
 
 	state := IDLE
-	task_hashmap := make(map[string]*LinkedList)
+	task_hashmap := make(map[string]*list.List)
 	ready_event_channel := make(chan struct{}, 1000)
 	job_finished_channel := make(chan *Job, 1000)
-	job_finished_channel_ptr = &job_finished_channel
+	job_finished_channel_ptr := &job_finished_channel
 
 	for {
 		select {
 		case job_ptr := <-*Job_channel_ptr:
 		job_list_ptr, ok := task_hashmap[job_ptr.Task_id]
 		if ok {
-			job_list.AddLast(job_ptr)
+			job_list_ptr.PushBack(job_ptr)
 		} else  {
-			job_list_ptr = new([*Job])
-			job_list.AddLast(job_ptr)
-			task_hashmap[Task_id] = job_list
+			job_list_ptr = new(list.List)
+			job_list_ptr.PushBack(job_ptr)
+			task_hashmap[job_ptr.Task_id] = job_list_ptr
 		}
-		job_list.AddLast(job_ptr)
 
 		if state == IDLE {
 			select {
@@ -81,9 +79,9 @@ func task_manager_goroutine() {
 			}
 		}
 		case job_finished_ptr := <-*job_finished_channel_ptr:
-			if job_list_ptr, ok := task_hashmap[job_finished_ptr.Task_id] {
-				job_list_ptr.RemoveFirst()
-				if len(job_list_ptr) == 0 {
+			if job_list_ptr, ok := task_hashmap[job_finished_ptr.Task_id]; ok {
+				job_list_ptr.Remove(job_list_ptr.Front())
+				if job_list_ptr.Len() == 0 {
 					delete (task_hashmap, job_finished_ptr.Task_id)
 				}
 			} else {
@@ -102,18 +100,20 @@ func task_manager_goroutine() {
 
 		case ready_event := <-ready_event_channel:
 			if state == IDLE {
-				if len(task_hashmap) {
+				if len(task_hashmap) > 0 {
 					min := -1
+					task_id_int := -1
+					var err error
 					for task_id, _ := range task_hashmap { // TODO change the hashmap with an ordered one.
-						task_id_int, err := Atoi(task_id)
+						task_id_int, err = strconv.Atoi(task_id)
 						if err != nil {
-							ErrorLoggerPtr.Fatal("String to integer error:", err) // TODO consider to use a integer instead of a string.
+						ErrorLoggerPtr.Fatal("String to integer error:", err) // TODO consider to use a integer instead of a string.
 						}
 						if min == -1 || min > task_id_int {
 							min = task_id_int
 						}
 					}
-					job_ptr := task_hashmap[Itoa(task_id_int)].First()
+					job_ptr := task_hashmap[strconv.Itoa(task_id_int)].Front().Value.(*Job)
 					go job_manager_goroutine(job_ptr, job_finished_channel_ptr)
 					state = BUSY
 				} else {
