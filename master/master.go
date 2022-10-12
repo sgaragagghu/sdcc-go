@@ -13,7 +13,7 @@ import (
 )
 
 type task struct {
-	id string
+	id int32
 	resource_link string
 	slice_algorithm string
 	mapper_amount int32
@@ -30,6 +30,8 @@ var (
 )
 
 func task_injector() { // TODO make a jsonrpc interface to send tasks from a browser or curl 
+
+	time.Sleep(60 * SECOND)
 	task := task{"", "LINK...", "csv_one_line", 1, "clustering", 1, "clustering"}
 	select {
 	case *Task_channel_ptr <- &task:
@@ -41,9 +43,8 @@ func task_injector() { // TODO make a jsonrpc interface to send tasks from a bro
 	default:
 		ErrorLoggerPtr.Fatal("Task channel is full")
 	}
-	
 }
- 
+
 
 func heartbeat_goroutine() {
 
@@ -86,6 +87,7 @@ func heartbeat_goroutine() {
 func scheduler_mapper_goroutine() {
 	InfoLoggerPtr.Println("Scheduler_mapper_goroutine started.")
 
+	task_counter int32 := 0
 	job_channel := make(chan *Job, 1000)
 	idle_mapper_hashmap := make(map[string]*Server)
 	working_mapper_hashmap := make(map[string]*Server)
@@ -122,19 +124,18 @@ func scheduler_mapper_goroutine() {
 			default:
 			}
 			if len(working_mapper_hashmap) == 0 && len(*Task_channel_ptr) > 0 { // if the curent task finished and theres a task
-				/*
 				select {
-				case New_task_event_channel_ptr <-[TODO: HERE CREATE THE EVENT]:
+				case New_task_event_channel_ptr <-struct{}{}:
 				default:
+					ErrorLoggerPtr.Fatal("New_task_event_channel full.")
 				}
-				*/
 			}
 		case new_task_event_ptr := <-*New_task_event_channel_ptr:
 			new_task_event_ptr=new_task_event_ptr
 			if len(working_mapper_hashmap) == 0 { // if the curent task finished
 				select {
-				case task := <-*Task_channel_ptr:
-					// start the new task...
+				case task_ptr := <-*Task_channel_ptr:
+					task_ptr.id = Task_counter++
 				default:
 				}
 			}
