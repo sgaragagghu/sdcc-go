@@ -12,11 +12,38 @@ import (
 	"github.com/elliotchance/orderedmap"
 )
 
+type task struct {
+	id string
+	resource_link string
+	slice_algorithm string
+	mapper_amount int32
+	map_algorithm string
+//	shuffle_algorithm string
+//	order_algorithm string
+	reducer_amount int32
+	reduce_algorithm string
+}
+
 var (
 	add_mapper_channel_ptr *chan *Server
 	rem_mapper_channel_ptr *chan *Server
 )
 
+func task_injector() { // TODO make a jsonrpc interface to send tasks from a browser or curl 
+	task := task{"", "LINK...", "csv_one_line", 1, "clustering", 1, "clustering"}
+	select {
+	case *Task_channel_ptr <- &task:
+		select {
+		case *New_task_event_channel_ptr <- struct{}{}:
+		default:
+			ErrorLoggerPtr.Fatal("Task channel is full")
+		}
+	default:
+		ErrorLoggerPtr.Fatal("Task channel is full")
+	}
+	
+}
+ 
 
 func heartbeat_goroutine() {
 
