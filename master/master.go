@@ -15,8 +15,10 @@ import (
 type task struct {
 	id int32
 	resource_link string
-	slice_algorithm string
-	mapper_amount int32
+	mappers_amount int32
+	margin int32
+	separate_entries byte
+	separate properties byte
 	map_algorithm string
 //	shuffle_algorithm string
 //	order_algorithm string
@@ -32,7 +34,7 @@ var (
 func task_injector() { // TODO make a jsonrpc interface to send tasks from a browser or curl 
 
 	time.Sleep(60 * SECOND)
-	task := task{"", "LINK...", "csv_one_line", 1, "clustering", 1, "clustering"}
+	task := task{"", "LINK...", 1, 10, '\n', ',' "clustering", 1, "clustering"}
 	select {
 	case *Task_channel_ptr <- &task:
 		select {
@@ -45,6 +47,9 @@ func task_injector() { // TODO make a jsonrpc interface to send tasks from a bro
 	}
 }
 
+func send_job() {
+	// TODO
+}
 
 func heartbeat_goroutine() {
 
@@ -102,8 +107,13 @@ func scheduler_mapper_goroutine() {
 				jobs_ptr := server.Jobs
 				for _, job_ptr := range *jobs_ptr {
 					if len(idle_mapper_hashmap) > 0 {
-						//- call a function to send the job to the server
-						//- assign the job to the first
+						for server_id, server_ptr := range idle_mapper_hashmap {
+							delete(idle_mapper_hashmap, server_id)
+							job_ptr.Server_id = server_id
+							working_mapper_hashmap[server_id] = server_ptr
+							go send_job(server_ptr, job_ptr)
+							break
+						}
 					} else {
 						select {
 						case job_channel <- job_ptr:
@@ -115,12 +125,19 @@ func scheduler_mapper_goroutine() {
 			delete(working_mapper_hashmap, rem_mapper_ptr.Id)
 			}
 		case add_mapper_ptr := <-*add_mapper_channel_ptr:
-			add_mapper_ptr = add_mapper_ptr
-		case job_completed_ptr := <-*Job_completed_channel_ptr:
-			job_completed_ptr = job_completed_ptr
 			select {
 			case job_ptr := <-job_channel:
-				//- send it to the server which has just completed the job
+				job_ptr.Server_id = add_mapper_ptr.Id
+				working_mapper_hashmap[add_mapper_ptr.Id] = server_ptr
+				go send_job(add_mapper_ptr, job_ptr)
+			default:
+				idle_mapper_hashmap[add_mapper_ptr.Id] = add_mapper_ptr
+			}
+		case job_completed_ptr := <-*Job_completed_channel_ptr:
+			select {
+			case job_ptr := <-job_channel:
+				job_ptr.Server_id = job_completed_ptr.Server_id
+				go send_job(working_mapper_hashmap[job_completed_ptr.Server_id], job_ptr)
 			default:
 			}
 			if len(working_mapper_hashmap) == 0 && len(*Task_channel_ptr) > 0 { // if the curent task finished and theres a task
@@ -130,12 +147,32 @@ func scheduler_mapper_goroutine() {
 					ErrorLoggerPtr.Fatal("New_task_event_channel full.")
 				}
 			}
-		case new_task_event_ptr := <-*New_task_event_channel_ptr:
-			new_task_event_ptr=new_task_event_ptr
+		case _ := <-*New_task_event_channel_ptr:
 			if len(working_mapper_hashmap) == 0 { // if the curent task finished
 				select {
 				case task_ptr := <-*Task_channel_ptr:
 					task_ptr.id = Task_counter++
+					resource_size = Get_file_size(task_ptr.resource_link)
+					mappers_amount := MinOf(task_ptr.mappers_amount, len(idle_mapper_hashmap)
+					slice_size := Abs(resource_size / mappers_amount) // maybe math.Abs
+					jobs *Job[mappers_amount]
+					for i := 0; i < mappers_amount; ++i {
+						begin := i * slice_size
+						end := (i + 1) * slize_size
+						if i == 0 begin = 0
+						if i == mappers_amount end = resource_size
+
+						jobs[i] = &Job{i, task_ptr.id, "", task_ptr.resource_link, begin, end, task_ptr.margin,	\
+							task_ptr.separate_entries, task_ptr.separate_properties, map_algorithm, begin, end}
+					}
+					{
+						var i := 0
+						for _, server_ptr := range idle_mapper_hashmap {
+							working_mapper_hashmap[server_ptr.Id] = server_ptr
+							go send_job(server_ptr, jobs[i])
+						++i
+						}
+					}
 				default:
 				}
 			}

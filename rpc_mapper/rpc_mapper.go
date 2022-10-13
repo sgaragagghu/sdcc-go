@@ -17,7 +17,13 @@ type Job struct {
 	Id string
 	Task_id string
 	Server_id string
-	Payload string
+	Resource_link string
+	Begin int64
+	End int64
+	Margin int32
+	Separate_entries byte
+	Separate properties byte
+	Map_algorithm string
 }
 
 
