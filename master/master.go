@@ -19,7 +19,9 @@ type task struct {
 	margin int32
 	separate_entries byte
 	separate properties byte
+	properties_amount int8
 	map_algorithm string
+	map_algorithm_parameters *List
 //	shuffle_algorithm string
 //	order_algorithm string
 	reducer_amount int32
@@ -34,7 +36,14 @@ var (
 func task_injector() { // TODO make a jsonrpc interface to send tasks from a browser or curl 
 
 	time.Sleep(60 * SECOND)
-	task := task{"", "LINK...", 1, 10, '\n', ',' "clustering", 1, "clustering"}
+	parameters_ptr := Link.new()
+	parameters_ptr.PushFront(4) // k
+	parameters_ptr.PushFront([]int{0, 0}) // u_0
+	parameters_ptr.PushFront([]int{1, 1}) // u_1
+	parameters_ptr.PushFront([]int{2, 2}) // u_2
+	parameters_ptr.PushFront([]int{3, 3}) // u_3
+
+	task := task{"", "LINK...", 1, 10, '\n', ',', 2, "clustering", parameters_ptr, 1, "clustering"}
 	select {
 	case *Task_channel_ptr <- &task:
 		select {
@@ -47,8 +56,25 @@ func task_injector() { // TODO make a jsonrpc interface to send tasks from a bro
 	}
 }
 
-func send_job() {
-	// TODO
+func send_job_goroutine(server_ptr *Server, job_ptr *Job) {
+	// connect to mapper via rpc tcp
+	client, err := rpc.Dial("tcp", server_ptr.Ip + ":" + server_ptr.Port)
+	defer client.Close()
+	if err != nil {
+		ErrorLoggerPtr.Fatal(err)
+	}
+
+	var (
+		reply	int
+		err	error
+	)
+
+	err = client.Call("Mapper_handler.Send_job", job_ptr, &reply)
+	if err != nil {
+		ErrorLoggerPtr.Fatal("Send_job error:", err)
+	}
+	InfoLoggerPtr.Println("Job sent.")
+
 }
 
 func heartbeat_goroutine() {
@@ -111,7 +137,7 @@ func scheduler_mapper_goroutine() {
 							delete(idle_mapper_hashmap, server_id)
 							job_ptr.Server_id = server_id
 							working_mapper_hashmap[server_id] = server_ptr
-							go send_job(server_ptr, job_ptr)
+							go send_job_goroutine(server_ptr, job_ptr)
 							break
 						}
 					} else {
@@ -129,7 +155,7 @@ func scheduler_mapper_goroutine() {
 			case job_ptr := <-job_channel:
 				job_ptr.Server_id = add_mapper_ptr.Id
 				working_mapper_hashmap[add_mapper_ptr.Id] = server_ptr
-				go send_job(add_mapper_ptr, job_ptr)
+				go send_job_goroutine(add_mapper_ptr, job_ptr)
 			default:
 				idle_mapper_hashmap[add_mapper_ptr.Id] = add_mapper_ptr
 			}
@@ -169,7 +195,7 @@ func scheduler_mapper_goroutine() {
 						var i := 0
 						for _, server_ptr := range idle_mapper_hashmap {
 							working_mapper_hashmap[server_ptr.Id] = server_ptr
-							go send_job(server_ptr, jobs[i])
+							go send_job_goroutine(server_ptr, jobs[i])
 						++i
 						}
 					}
@@ -195,26 +221,17 @@ func master_main() {
 	rem_mapper_channel := make(chan *Server, 1000)
 	rem_mapper_channel_ptr = &rem_mapper_channel
 
-	add_mapper_channel_ptr = add_mapper_channel_ptr
-	rem_mapper_channel_ptr = rem_mapper_channel_ptr
-
 	//creating channel for communicating ended jobs
 	job_completed_channel := make(chan *Server, 1000)
 	Job_completed_channel_ptr = &job_completed_channel
-
-	Job_completed_channel_ptr = Job_completed_channel_ptr
 
 	//creating channel for communicating new task event
 	new_task_event_channel := make(chan *Server, 1000)
 	New_task_event_channel_ptr = &new_task_event_channel
 
-	New_task_event_channel_ptr = New_task_event_channel_ptr
-
 	//creating channel for communicating new task
 	task_channel := make(chan *Server, 1000)
 	Task_channel_ptr = &task_channel
-
-	Task_channel_ptr = Task_channel_ptr
 
 	go scheduler_mapper_goroutine()
 	go heartbeat_goroutine()

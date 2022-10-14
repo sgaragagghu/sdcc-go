@@ -44,9 +44,57 @@ func heartbeat_goroutine(client *rpc.Client) {
 
 }
 
+func get_actual_begin() {
+	reader := bytes.Read(*load_ptr)
+	buffered_read := bufio.NewReader(reader)
+	found := false
+	i := 0
+	// TODO, see the next function
+	for char, err := buffered_read.ReadByte(); err != nil; char, err = buffered_read.ReadByte() {
+		if char == job_ptr.Separete_entries {
+			found = true
+			break
+		}
+		++i
+	}
+	if found == true return i, nil
+	else return i (err?)
+}
+
+func get_actual_end(load_ptr *byte[], offset int64) {
+	reader := bytes.ReadAt(*load_ptr, offset)
+	buffered_read := bufio.NewReader(reader)
+	found := false
+	i := 0
+	// TODO check if the buffer the fox stopped cause the buffer is empty but not the byte array
+	for char, err := buffered_read.ReadByte(); err != nil; char, err = buffered_read.ReadByte() {
+		if char == job_ptr.Separate_entries {
+			found = true
+			break
+		}
+		++i
+	}
+	if found == true return i, nil
+	else return i (err?)
+}
+
+func mapper_algorithm_clustering() {
+	
+}
+
 func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 
 	// job_ptr.Res = job_ptr.Algorithm(job_ptr.Payload)
+	load_ptr := http_download(job_ptr.Link_resource, job_ptr.Begin, job_ptr.Begin + Abs((job_ptr.End - job_ptr.Begin) * ((100 + job_ptr.margin)/100)))
+
+	actual_begin, err := get_actual_begin(load_ptr)
+	if err != nil ErrorLoggerPtr.Fatal("get_actual_begin error:", err)
+
+	actual_end, err := get_actual_end(load_ptr, job_ptr.End - job_ptr.Begin)
+	if err != nil ErrorLoggerPtr.Fatal("get_actual_end error:", err)
+
+	job_ptr.Result = Call("mapper_algorithm_" + job_ptr.mapper_algorithm, job_ptr.Properties_amount, job_ptr.Algorithm_parameters, (*load_ptr)[actual_begin:actual_end])
+
 	select {
 	case *chan_ptr <- job_ptr:
 	default:

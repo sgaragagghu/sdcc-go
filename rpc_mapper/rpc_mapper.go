@@ -23,7 +23,10 @@ type Job struct {
 	Margin int32
 	Separate_entries byte
 	Separate properties byte
+	Properties_amount int8
 	Map_algorithm string
+	Map_algorithm_parameters *List
+	Result *map[int]interface{}
 }
 
 

@@ -1,7 +1,9 @@
 package share
 
 import (
-    "net"
+	"io/ioutil"
+	"net/http"
+	"net"
 )
 
 // Get preferred outbound ip of this machine
@@ -72,4 +74,16 @@ func get_file_size() {
 
 	return downloadSize
 
+ }
+
+ func http_download() {
+	 req, _ := http.NewRequest("GET", "http://example.com", nil)
+	 req.Header.Add("Range", "bytes=0-1023")
+	 //fmt.Println(req)
+	 var client http.Client
+	 resp, _ := client.Do(req) // TODO download to local file
+	 //fmt.Println(resp)
+	 //body, _ := ioutil.ReadAll(resp.Body)
+	 //fmt.Println(len(body))
+	 return &resp.Body
  }
