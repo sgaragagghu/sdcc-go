@@ -14,6 +14,10 @@ import (
 	"net"
 	"reflect"
 	"container/list"
+	"bytes"
+	"bufio"
+	"math"
+	"errors"
 )
 
 const (
@@ -23,6 +27,7 @@ const (
 
 var (
 	server *Server
+	stub_storage StubMapping
 )
 
 func heartbeat_goroutine(client *rpc.Client) {
@@ -44,63 +49,70 @@ func heartbeat_goroutine(client *rpc.Client) {
 
 }
 
-func get_actual_begin() {
-	reader := bytes.Read(*load_ptr)
+func get_actual_begin(load_ptr *[]byte, separate_entries byte) (int64, error) {
+	reader := bytes.NewReader(*load_ptr)
 	buffered_read := bufio.NewReader(reader)
 	found := false
-	i := 0
+	var i int64 = 0
 	// TODO, see the next function
 	for char, err := buffered_read.ReadByte(); err != nil; char, err = buffered_read.ReadByte() {
-		if char == job_ptr.Separete_entries {
+		if char == separate_entries {
 			found = true
 			break
 		}
-		++i
+		i += 1
 	}
-	if found == true return i, nil
-	else return i (err?)
+	if found == true {
+		return i, nil
+	} else { return i, errors.New("Separate entries not found") }
 }
 
-func get_actual_end(load_ptr *byte[], offset int64) {
-	reader := bytes.ReadAt(*load_ptr, offset)
+func get_actual_end(load_ptr *[]byte, separate_entries byte, offset int64) (int64, error) {
+	reader := bytes.NewReader((*load_ptr)[offset:]) //TODO check error
 	buffered_read := bufio.NewReader(reader)
 	found := false
-	i := 0
+	var i int64 = 0
 	// TODO check if the buffer the fox stopped cause the buffer is empty but not the byte array
 	for char, err := buffered_read.ReadByte(); err != nil; char, err = buffered_read.ReadByte() {
-		if char == job_ptr.Separate_entries {
+		if char == separate_entries {
 			found = true
 			break
 		}
-		++i
+		i += 1
 	}
-	if found == true return i, nil
-	else return i (err?)
+	if found == true {
+		return i, nil
+	} else { return i, errors.New("Separate entries not found") }
 }
 
-func mapper_algorithm_clustering() {
+func mapper_algorithm_clustering(properties_amount int, separate_entries byte, separate_properties byte, parameters *list.List, load []byte) {
 
-	k := parameters.Back() //.(int)
+	k := parameters.Back().Value.(int)
 	parameters.Remove(parameters.Back())
-	var u_vec [k][properties_amount]int
-	reader := bytes.Read(load)
+
+	u_vec := make([][]int, k)
+	for i := range u_vec {
+		u_vec[i] = make([]int, properties_amount)
+	}
+
+	reader := bytes.NewReader(load)
 	buffered_read := bufio.NewReader(reader)
-	for i := k - 1 ; i >= 0; --i {
+	for i := k - 1 ; i >= 0; i -= 1 {
 		j := 1
 		s := ""
 		for char, err := buffered_read.ReadByte(); err != nil; char, err = buffered_read.ReadByte() {
 			s += string(char) // TODO Try to use a buffer like bytes.NewBufferString(ret) for better performances
-			if char == job_ptr.Separete_properties {
+			if char == separate_properties {
 				if j < (properties_amount - 1)  {
-					u_vec[k][j - 1] = Atoi(s)
-					s := ""
-					++j
-				} else ErrorLoggerPtr.Fatal("Parsing failed")
-			} else if char == job_ptr.Separate_entries {
+					u_vec[k][j - 1], _ = strconv.Atoi(s) //TODO check the error
+					s = ""
+					j += 1
+				} else { ErrorLoggerPtr.Fatal("Parsing failed") }
+			} else if char == separate_entries {
 				if j == (properties_amount - 1) {
-					u_vec[k][j - 1] = Atoi(s)
+					u_vec[k][j - 1], _ = strconv.Atoi(s) // TODO check the error
 					break
-				} else ErrorLoggerPtr.Fatal("Parsing failed")
+				} else { ErrorLoggerPtr.Fatal("Parsing failed") }
 			}
 		}
 	}
@@ -109,16 +121,17 @@ func mapper_algorithm_clustering() {
 
 func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 
-	// job_ptr.Res = job_ptr.Algorithm(job_ptr.Payload)
-	load_ptr := http_download(job_ptr.Link_resource, job_ptr.Begin, job_ptr.Begin + Abs((job_ptr.End - job_ptr.Begin) * ((100 + job_ptr.margin)/100)))
+	// TODO check possible overflow
+	load_ptr := Http_download(job_ptr.Resource_link, job_ptr.Begin, job_ptr.Begin + int64(math.Abs(float64((job_ptr.End - job_ptr.Begin)) * ((100 + float64(job_ptr.Margin))/100))))
 
-	actual_begin, err := get_actual_begin(load_ptr)
-	if err != nil ErrorLoggerPtr.Fatal("get_actual_begin error:", err)
+	actual_begin, err := get_actual_begin(load_ptr, job_ptr.Separate_entries)
+	if err != nil { ErrorLoggerPtr.Fatal("get_actual_begin error:", err) }
 
-	actual_end, err := get_actual_end(load_ptr, job_ptr.End - job_ptr.Begin)
-	if err != nil ErrorLoggerPtr.Fatal("get_actual_end error:", err)
-
-	job_ptr.Result = Call("mapper_algorithm_" + job_ptr.mapper_algorithm, job_ptr.Properties_amount, job_ptr.Algorithm_parameters, (*load_ptr)[actual_begin:actual_end])
+	actual_end, err := get_actual_end(load_ptr, job_ptr.Separate_entries, job_ptr.End - job_ptr.Begin)
+	if err != nil { ErrorLoggerPtr.Fatal("get_actual_end error:", err) }
+	// TODO check the error
+	res, _ := Call("mapper_algorithm_" + job_ptr.Map_algorithm, stub_storage, job_ptr.Properties_amount, job_ptr.Map_algorithm_parameters, (*load_ptr)[actual_begin:actual_end])
+	job_ptr.Result = res.(*map[int]interface {})
 
 	select {
 	case *chan_ptr <- job_ptr:
@@ -174,7 +187,7 @@ func task_manager_goroutine() {
 
 			state = IDLE
 
-		case ready_event := <-ready_event_channel:
+		case <-ready_event_channel:
 			if state == IDLE {
 				if len(task_hashmap) > 0 {
 					min := -1
@@ -201,6 +214,11 @@ func task_manager_goroutine() {
 }
 
 func init() {
+
+	stub_storage = map[string]interface{}{
+		"mapper_algorithm_clustering": mapper_algorithm_clustering,
+		//"funcB": funcB,
+	}
 
 	ip := GetOutboundIP().String()
 	var id string

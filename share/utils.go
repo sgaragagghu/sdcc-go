@@ -2,9 +2,14 @@ package share
 
 import (
 	"io/ioutil"
+	"reflect"
 	"net/http"
 	"net"
+	"errors"
+	"strconv"
 )
+
+type StubMapping map[string]interface{}
 
 // Get preferred outbound ip of this machine
 func GetOutboundIP() net.IP {
@@ -19,7 +24,7 @@ func GetOutboundIP() net.IP {
     return localAddr.IP
 }
 
-func MinOf(vars ...int) int {
+func MinOf_int32(vars ...int32) int32 {
     min := vars[0]
 
     for _, i := range vars {
@@ -31,8 +36,8 @@ func MinOf(vars ...int) int {
     return min
 }
 
-func Call(funcName string, params ... interface{}) (result interface{}, err error) {
-	f := reflect.ValueOf(StubStorage[funcName])
+func Call(funcName string, stub_storage StubMapping, params ... interface{}) (result interface{}, err error) {
+	f := reflect.ValueOf(stub_storage[funcName])
 	if len(params) != f.Type().NumIn() {
 		err = errors.New("The number of params is out of index.")
 		return
@@ -47,8 +52,8 @@ func Call(funcName string, params ... interface{}) (result interface{}, err erro
 	return
 }
 
-func get_file_size() {
-	url := "https://d1ohg4ss876yi2.cloudfront.net/preview/golang.png"
+func Get_file_size(url string) (int64) {
+//	url := "https://d1ohg4ss876yi2.cloudfront.net/preview/golang.png"
 /*
 	// we are interested in getting the file or object name
 	// so take the last item from the slice
@@ -76,14 +81,14 @@ func get_file_size() {
 
  }
 
- func http_download() {
-	 req, _ := http.NewRequest("GET", "http://example.com", nil)
-	 req.Header.Add("Range", "bytes=0-1023")
+ func Http_download(resource string, begin int64, end int64) (*[]byte) {
+	 req, _ := http.NewRequest("GET", resource, nil)
+	 req.Header.Add("Range", "bytes=" +  strconv.FormatInt(begin, 10) + "-" + strconv.FormatInt(end, 10))
 	 //fmt.Println(req)
 	 var client http.Client
 	 resp, _ := client.Do(req) // TODO download to local file
 	 //fmt.Println(resp)
-	 //body, _ := ioutil.ReadAll(resp.Body)
+	 body, _ := ioutil.ReadAll(resp.Body) // TODO check the error
 	 //fmt.Println(len(body))
-	 return &resp.Body
+	 return &body
  }

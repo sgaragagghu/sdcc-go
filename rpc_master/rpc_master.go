@@ -13,9 +13,7 @@ const (
 
 var (
 	Heartbeat_channel_ptr *chan *Server
-	Job_completed_channel_ptr *chan *Server
-	New_task_event_channel_ptr *chan *Server
-	Task_channel_ptr *chan *Server
+	Job_completed_channel_ptr *chan *Job
 )
 
 // create a type to get an interface
