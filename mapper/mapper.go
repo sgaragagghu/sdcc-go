@@ -79,7 +79,32 @@ func get_actual_end(load_ptr *byte[], offset int64) {
 }
 
 func mapper_algorithm_clustering() {
-	
+
+	k := parameters.Back() //.(int)
+	parameters.Remove(parameters.Back())
+	var u_vec [k][properties_amount]int
+	reader := bytes.Read(load)
+	buffered_read := bufio.NewReader(reader)
+	for i := k - 1 ; i >= 0; --i {
+		j := 1
+		s := ""
+		for char, err := buffered_read.ReadByte(); err != nil; char, err = buffered_read.ReadByte() {
+			s += string(char) // TODO Try to use a buffer like bytes.NewBufferString(ret) for better performances
+			if char == job_ptr.Separete_properties {
+				if j < (properties_amount - 1)  {
+					u_vec[k][j - 1] = Atoi(s)
+					s := ""
+					++j
+				} else ErrorLoggerPtr.Fatal("Parsing failed")
+			} else if char == job_ptr.Separate_entries {
+				if j == (properties_amount - 1) {
+					u_vec[k][j - 1] = Atoi(s)
+					break
+				} else ErrorLoggerPtr.Fatal("Parsing failed")
+			}
+		}
+	}
+
 }
 
 func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
