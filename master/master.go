@@ -95,29 +95,37 @@ func heartbeat_goroutine() {
 	for {
 		select {
 		case heartbeat_ptr := <-*Heartbeat_channel_ptr:
-			element_temp := linked_hashmap.GetElement(heartbeat_ptr.Id)
+			element_temp, ok := linked_hashmap.Get(heartbeat_ptr.Id)
 			var server_temp_ptr *Server
-			if element_temp != nil {
-				server_temp_ptr = element_temp.Value.(*Server)
+			if ok {
+				server_temp_ptr = element_temp.(*Server)
 				server_temp_ptr.Last_heartbeat = heartbeat_ptr.Last_heartbeat
 				if !linked_hashmap.Delete(heartbeat_ptr.Id) { // TODO Check: could work without deletion
 					ErrorLoggerPtr.Fatal("Unexpected error")
 				}
 			} else {
-				// TODO write on chan that there's a new server
 				server_temp_ptr = heartbeat_ptr
+				select {
+				case *add_mapper_channel_ptr <-server_temp_ptr:
+				default:
+					ErrorLoggerPtr.Fatal("Add_mapper_channel is full")
+				}
 			}
 			linked_hashmap.Set(server_temp_ptr.Id, server_temp_ptr) // TODO is it efficient ? 
-			//InfoLoggerPtr.Println("received heartbeat")
+			//InfoLoggerPtr.Println("Received heartbeat from mapper:", server_temp_ptr.Id)
 		case <-time.After(SECOND):
 			for el := linked_hashmap.Front(); el != nil;  {
 				server_temp_ptr := el.Value.(*Server)
 				el = el.Next()
-				if server_temp_ptr.Last_heartbeat.Unix() > time.Now().Unix() - EXPIRE_TIME {
+				if server_temp_ptr.Last_heartbeat.Unix() < time.Now().Unix() - EXPIRE_TIME {
 					if !linked_hashmap.Delete(server_temp_ptr.Id) {
 						ErrorLoggerPtr.Fatal("Unexpected error")
 					}
-					// TODO write on chan that this server is dead
+					select {
+					case *rem_mapper_channel_ptr <-server_temp_ptr:
+					default:
+						ErrorLoggerPtr.Fatal("Add_mapper_channel is full")
+					}
 				}
 			}
 		}
@@ -162,6 +170,7 @@ func scheduler_mapper_goroutine() {
 			delete(working_mapper_hashmap, rem_mapper_ptr.Id)
 			}
 		case add_mapper_ptr := <-*add_mapper_channel_ptr:
+			InfoLoggerPtr.Println("Server", add_mapper_ptr.Id, "is being added")
 			mapper_job_map := make(map[string]*Job)
 			add_mapper_ptr.Jobs = &mapper_job_map
 			select {
