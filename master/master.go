@@ -24,7 +24,7 @@ type task struct {
 	separate_properties byte
 	properties_amount int8
 	map_algorithm string
-	map_algorithm_parameters *list.List
+	map_algorithm_parameters interface{}
 //	shuffle_algorithm string
 //	order_algorithm string
 	reducer_amount int32
@@ -43,6 +43,9 @@ var (
 func task_injector_goroutine() { // TODO make a jsonrpc interface to send tasks from a browser or curl 
 
 	time.Sleep(60 * SECOND)
+
+//	parameters_ptr := &[1]int{1}
+
 	parameters_ptr := new(list.List)
 	parameters_ptr.PushFront(4) // k
 	parameters_ptr.PushFront([]int{0, 0}) // u_0

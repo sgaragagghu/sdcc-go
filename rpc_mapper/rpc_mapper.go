@@ -2,7 +2,7 @@ package rpc_mapper
 
 import (
 //	. "../share"
-	"container/list"
+//	"container/list"
 )
 
 const MAPPER_PORT = "6668"
@@ -26,7 +26,7 @@ type Job struct {
 	Separate_properties byte
 	Properties_amount int8
 	Map_algorithm string
-	Map_algorithm_parameters *list.List
+	Map_algorithm_parameters interface{}
 	Result *map[int]interface{}
 }
 

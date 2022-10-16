@@ -125,7 +125,7 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 	actual_end, err := get_actual_end(load_ptr, job_ptr.Separate_entries, job_ptr.End - job_ptr.Begin)
 	if err != nil { ErrorLoggerPtr.Fatal("get_actual_end error:", err) }
 	// TODO check the error
-	res, _ := Call("mapper_algorithm_" + job_ptr.Map_algorithm, stub_storage, job_ptr.Properties_amount, job_ptr.Map_algorithm_parameters, (*load_ptr)[actual_begin:actual_end])
+	res, _ := Call("mapper_algorithm_" + job_ptr.Map_algorithm, stub_storage, job_ptr.Properties_amount, job_ptr.Map_algorithm_parameters.(*list.List), (*load_ptr)[actual_begin:actual_end])
 	job_ptr.Result = res.(*map[int]interface {})
 
 	select {
