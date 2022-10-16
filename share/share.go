@@ -18,6 +18,11 @@ const (
 	REDUCER	= "REDUCER"
 )
 
+const (
+	IDLE = "IDLE"
+	BUSY = "BUSY"
+)
+
 const APP_ID = "SDCC"
 
 const MASTER_IP = "172.18.0.254"

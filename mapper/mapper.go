@@ -20,11 +20,6 @@ import (
 	"errors"
 )
 
-const (
-	IDLE = "IDLE"
-	BUSY = "BUSY"
-)
-
 var (
 	server *Server
 	stub_storage StubMapping
@@ -246,7 +241,7 @@ func init() {
 	server = &Server{id, ip, MAPPER_PORT, time.Now(), nil, "MAPPER"}
 }
 
-func mapper_main() {
+func Mapper_main() {
 
 	// connect to server via rpc tcp
 	client, err := rpc.Dial("tcp", MASTER_IP + ":" + MASTER_PORT)

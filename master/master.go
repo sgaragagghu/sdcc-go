@@ -40,7 +40,7 @@ var (
 	rem_mapper_channel_ptr *chan *Server
 )
 
-func task_injector() { // TODO make a jsonrpc interface to send tasks from a browser or curl 
+func task_injector_goroutine() { // TODO make a jsonrpc interface to send tasks from a browser or curl 
 
 	time.Sleep(60 * SECOND)
 	parameters_ptr := new(list.List)
@@ -50,7 +50,7 @@ func task_injector() { // TODO make a jsonrpc interface to send tasks from a bro
 	parameters_ptr.PushFront([]int{2, 2}) // u_2
 	parameters_ptr.PushFront([]int{3, 3}) // u_3
 
-	task := task{-1, "LINK...", 1, 10, '\n', ',', 2, "clustering", parameters_ptr, 1, "clustering"}
+	task := task{-1, "https://raw.githubusercontent.com/sgaragagghu/sdcc-clustering-datasets/master/sdcc/2d-4c.csv", 1, 10, '\n', ',', 2, "clustering", parameters_ptr, 1, "clustering"}
 	select {
 	case *Task_channel_ptr <- &task:
 		select {
@@ -61,6 +61,8 @@ func task_injector() { // TODO make a jsonrpc interface to send tasks from a bro
 	default:
 		ErrorLoggerPtr.Fatal("Task channel is full")
 	}
+
+	InfoLoggerPtr.Println("Task correctly injected")
 }
 
 func send_job_goroutine(server_ptr *Server, job_ptr *Job) {
@@ -123,6 +125,7 @@ func scheduler_mapper_goroutine() {
 	InfoLoggerPtr.Println("Scheduler_mapper_goroutine started.")
 
 	var task_counter int32 = 0
+	state := IDLE
 	job_channel := make(chan *Job, 1000)
 	idle_mapper_hashmap := make(map[string]*Server)
 	working_mapper_hashmap := make(map[string]*Server)
@@ -141,6 +144,7 @@ func scheduler_mapper_goroutine() {
 							delete(idle_mapper_hashmap, server_id)
 							job_ptr.Server_id = server_id
 							working_mapper_hashmap[server_id] = server_ptr
+							InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to server", job_ptr.Server_id)
 							go send_job_goroutine(server_ptr, job_ptr)
 							break
 						}
@@ -155,26 +159,42 @@ func scheduler_mapper_goroutine() {
 			delete(working_mapper_hashmap, rem_mapper_ptr.Id)
 			}
 		case add_mapper_ptr := <-*add_mapper_channel_ptr:
+			mapper_job_map := make(map[string]*Job)
+			add_mapper_ptr.Jobs = &mapper_job_map
 			select {
 			case job_ptr := <-job_channel:
 				job_ptr.Server_id = add_mapper_ptr.Id
 				working_mapper_hashmap[add_mapper_ptr.Id] = add_mapper_ptr
+				(*add_mapper_ptr.Jobs)[job_ptr.Id] = job_ptr
+				InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to server", job_ptr.Server_id)
 				go send_job_goroutine(add_mapper_ptr, job_ptr)
 			default:
 				idle_mapper_hashmap[add_mapper_ptr.Id] = add_mapper_ptr
 			}
 		case job_completed_ptr := <-*Job_completed_channel_ptr:
-			select {
-			case job_ptr := <-job_channel:
-				job_ptr.Server_id = job_completed_ptr.Server_id
-				go send_job_goroutine(working_mapper_hashmap[job_completed_ptr.Server_id], job_ptr)
-			default:
-			}
-			if len(working_mapper_hashmap) == 0 && len(*Task_channel_ptr) > 0 { // if the curent task finished and theres a task
+			mapper_job_map_ptr := working_mapper_hashmap[job_completed_ptr.Server_id].Jobs
+			delete(*mapper_job_map_ptr, job_completed_ptr.Id)
+			if len(*mapper_job_map_ptr) == 0 {
 				select {
-				case *New_task_event_channel_ptr <-struct{}{}:
+				case job_ptr := <-job_channel:
+					job_ptr.Server_id = job_completed_ptr.Server_id
+					InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to server", job_ptr.Server_id)
+					(*mapper_job_map_ptr)[job_ptr.Id] = job_ptr
+					go send_job_goroutine(working_mapper_hashmap[job_completed_ptr.Server_id], job_ptr)
 				default:
-					ErrorLoggerPtr.Fatal("New_task_event_channel full.")
+					idle_mapper_hashmap[job_completed_ptr.Server_id] = working_mapper_hashmap[job_completed_ptr.Server_id]
+					delete(working_mapper_hashmap, job_completed_ptr.Server_id)
+				}
+				if len(working_mapper_hashmap) == 0 {
+					InfoLoggerPtr.Println("Task", job_completed_ptr.Id, "completed")
+					state = IDLE
+				}
+				if state == IDLE && len(*Task_channel_ptr) > 0 { // if the curent task finished and theres a task
+					select {
+					case *New_task_event_channel_ptr <-struct{}{}:
+					default:
+						ErrorLoggerPtr.Fatal("New_task_event_channel full.")
+					}
 				}
 			}
 		case <-*New_task_event_channel_ptr:
@@ -183,8 +203,11 @@ func scheduler_mapper_goroutine() {
 				case task_ptr := <-*Task_channel_ptr:
 					task_ptr.id = task_counter
 					task_counter += 1
+					state = BUSY
+					InfoLoggerPtr.Println("Scheduling task:", task_ptr.id)
 					resource_size := Get_file_size(task_ptr.resource_link)
 					mappers_amount := MinOf_int32(task_ptr.mappers_amount, int32(len(idle_mapper_hashmap))) // TODO check overflow
+					if mappers_amount == 0 { mappers_amount = 1 }
 					slice_size := int64(math.Abs(float64(resource_size) / float64(mappers_amount)))
 					jobs := make([]*Job, mappers_amount)
 					{
@@ -201,12 +224,18 @@ func scheduler_mapper_goroutine() {
 								task_ptr.map_algorithm, task_ptr.map_algorithm_parameters, nil}
 						}
 					}
-					{
+					if len(idle_mapper_hashmap) > 0 {
 						i := 0
 						for _, server_ptr := range idle_mapper_hashmap {
 							working_mapper_hashmap[server_ptr.Id] = server_ptr
 							go send_job_goroutine(server_ptr, jobs[i])
 						i += 1
+						}
+					} else {
+						select {
+						case job_channel <- jobs[0]:
+						default:
+							ErrorLoggerPtr.Fatal("Job channel is full.")
 						}
 					}
 				default:
@@ -216,7 +245,7 @@ func scheduler_mapper_goroutine() {
 	}
 }
 
-func master_main() {
+func Master_main() {
 
 	// creating channel for communicating the heartbeat
 	// to the goroutine heartbeat manager
@@ -245,6 +274,8 @@ func master_main() {
 
 	go scheduler_mapper_goroutine()
 	go heartbeat_goroutine()
+	go task_injector_goroutine()
+
 
 	master_handler := new(Master_handler)
 
