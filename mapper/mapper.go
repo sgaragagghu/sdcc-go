@@ -11,6 +11,7 @@ import (
 	"time"
 	"net/rpc"
 	"crypto/sha256"
+	"encoding/gob"
 	"net"
 	"reflect"
 	"container/list"
@@ -50,7 +51,7 @@ func get_actual_begin(load_ptr *[]byte, separate_entries byte) (int64, error) {
 	found := false
 	var i int64 = 0
 	// TODO, see the next function
-	for char, err := buffered_read.ReadByte(); err != nil; char, err = buffered_read.ReadByte() {
+	for char, err := buffered_read.ReadByte(); err == nil; char, err = buffered_read.ReadByte() {
 		if char == separate_entries {
 			found = true
 			break
@@ -63,12 +64,12 @@ func get_actual_begin(load_ptr *[]byte, separate_entries byte) (int64, error) {
 }
 
 func get_actual_end(load_ptr *[]byte, separate_entries byte, offset int64) (int64, error) {
-	reader := bytes.NewReader((*load_ptr)[offset:]) //TODO check error
+	reader := bytes.NewReader((*load_ptr)[offset - 1:]) //TODO check error
 	buffered_read := bufio.NewReader(reader)
 	found := false
-	var i int64 = 0
+	var i int64 = -1
 	// TODO check if the buffer the fox stopped cause the buffer is empty but not the byte array
-	for char, err := buffered_read.ReadByte(); err != nil; char, err = buffered_read.ReadByte() {
+	for char, err := buffered_read.ReadByte(); err == nil; char, err = buffered_read.ReadByte() { // TODO check the error if != EOF
 		if char == separate_entries {
 			found = true
 			break
@@ -76,42 +77,60 @@ func get_actual_end(load_ptr *[]byte, separate_entries byte, offset int64) (int6
 		i += 1
 	}
 	if found == true {
-		return i, nil
-	} else { return i, errors.New("Separate entries not found") }
+		return offset + i, nil
+	} else { return offset + i, errors.New("Separate entries not found") }
 }
 
-func mapper_algorithm_clustering(properties_amount int, separate_entries byte, separate_properties byte, parameters *list.List, load []byte) {
+func mapper_algorithm_clustering(properties_amount int, separate_entries byte, separate_properties byte, parameters []interface{}, load []byte) () {
 
-	k := parameters.Back().Value.(int)
-	parameters.Remove(parameters.Back())
+	k := parameters[0].(int)
 
 	u_vec := make([][]int, k)
 	for i := range u_vec {
-		u_vec[i] = make([]int, properties_amount)
+		//u_vec[i] = make([]int, properties_amount)
+		u_vec[i] = parameters[i + 1].([]int)
 	}
 
 	reader := bytes.NewReader(load)
 	buffered_read := bufio.NewReader(reader)
-	for i := k - 1 ; i >= 0; i -= 1 {
+
+	for {
 		j := 1
 		s := ""
-		for char, err := buffered_read.ReadByte(); err != nil; char, err = buffered_read.ReadByte() {
+		point := make([]int, propetries_amount)
+		var err error = nil
+		var char byte = 0
+		for char, err = buffered_read.ReadByte(); err != nil; char, err = buffered_read.ReadByte() {
 			s += string(char) // TODO Try to use a buffer like bytes.NewBufferString(ret) for better performances
 			if char == separate_properties {
 				if j < (properties_amount - 1)  {
-					u_vec[k][j - 1], _ = strconv.Atoi(s) //TODO check the error
+					point[j - 1], _ = strconv.Atoi(s) //TODO check the error
 					s = ""
 					j += 1
 				} else { ErrorLoggerPtr.Fatal("Parsing failed") }
 			} else if char == separate_entries {
 				if j == (properties_amount - 1) {
-					u_vec[k][j - 1], _ = strconv.Atoi(s) // TODO check the error
+					point[j - 1], _ = strconv.Atoi(s) // TODO check the error
 					break
 				} else { ErrorLoggerPtr.Fatal("Parsing failed") }
 			}
 		}
+		min_index := 0
+		min := -1
+		for i := k - 1 ; i >= 0; i -= 1 {
+			if distance := euclidean_norm(parameters_amount, u_vec[i], point); distance < min || min == -1 {
+				min_index = i
+				min = distance
+			}
+		}
+		if err != nil {
+			if err == io.EOF {
+				break
+			} else {
+				ErrorLoggerPtr.Fatal(err)
+			}
+		}
 	}
-
 }
 
 func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
@@ -125,7 +144,8 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 	actual_end, err := get_actual_end(load_ptr, job_ptr.Separate_entries, job_ptr.End - job_ptr.Begin)
 	if err != nil { ErrorLoggerPtr.Fatal("get_actual_end error:", err) }
 	// TODO check the error
-	res, _ := Call("mapper_algorithm_" + job_ptr.Map_algorithm, stub_storage, job_ptr.Properties_amount, job_ptr.Map_algorithm_parameters.(*list.List), (*load_ptr)[actual_begin:actual_end])
+	res, _ := Call("mapper_algorithm_" + job_ptr.Map_algorithm, stub_storage, job_ptr.Properties_amount,
+		job_ptr.Map_algorithm_parameters, (*load_ptr)[actual_begin:actual_end])
 	job_ptr.Result = res.(*map[int]interface {})
 
 	select {
@@ -146,22 +166,24 @@ func task_manager_goroutine() {
 	for {
 		select {
 		case job_ptr := <-*Job_channel_ptr:
-		job_list_ptr, ok := task_hashmap[job_ptr.Task_id]
-		if ok {
-			job_list_ptr.PushBack(job_ptr)
-		} else  {
-			job_list_ptr = new(list.List)
-			job_list_ptr.PushBack(job_ptr)
-			task_hashmap[job_ptr.Task_id] = job_list_ptr
-		}
-
-		if state == IDLE {
-			select {
-			case ready_event_channel <- struct{}{}:
-			default:
-				ErrorLoggerPtr.Fatal("ready_event_channel is full.")
+			InfoLoggerPtr.Println("Received Task", job_ptr.Task_id, "job", job_ptr.Id)
+			job_list_ptr, ok := task_hashmap[job_ptr.Task_id]
+			if ok {
+				job_list_ptr.PushBack(job_ptr)
+			} else  {
+				job_list_ptr = new(list.List)
+				job_list_ptr.PushBack(job_ptr)
+				task_hashmap[job_ptr.Task_id] = job_list_ptr
 			}
-		}
+
+			if state == IDLE {
+				select {
+				case ready_event_channel <- struct{}{}:
+				default:
+				ErrorLoggerPtr.Fatal("ready_event_channel is full.")
+				}
+			}
+
 		case job_finished_ptr := <-*job_finished_channel_ptr:
 			if job_list_ptr, ok := task_hashmap[job_finished_ptr.Task_id]; ok {
 				job_list_ptr.Remove(job_list_ptr.Front())
@@ -210,6 +232,8 @@ func task_manager_goroutine() {
 
 func init() {
 
+	gob.Register([]interface{}(nil))
+
 	stub_storage = map[string]interface{}{
 		"mapper_algorithm_clustering": mapper_algorithm_clustering,
 		//"funcB": funcB,
@@ -252,11 +276,12 @@ func Mapper_main() {
 
 	// creating channel for communicating the task
 	// to the goroutine task manager
-	Job_channel_ptr = new(chan *Job)
+	job_channel := make(chan *Job, 1000)
+	Job_channel_ptr = &job_channel
 
 	//go task_goroutine()
 
-
+	go task_manager_goroutine()
 	go heartbeat_goroutine(client)
 
 	mapper_handler := new(Mapper_handler)
