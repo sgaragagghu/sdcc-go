@@ -31,7 +31,7 @@ type Job struct {
 }
 
 
-func (h Mapper_handler) Send_task(args *Job, reply *int) error {
+func (h Mapper_handler) Send_job(args *Job, reply *int) error {
 	*Job_channel_ptr <- args
 	return nil
 }

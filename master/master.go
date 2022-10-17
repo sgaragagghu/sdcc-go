@@ -8,7 +8,8 @@ import (
 	"net/rpc"
 	"reflect"
 	"time"
-	"container/list"
+	"encoding/gob"
+	//"container/list"
 	"math"
 	"strconv"
 
@@ -44,16 +45,23 @@ func task_injector_goroutine() { // TODO make a jsonrpc interface to send tasks 
 
 	time.Sleep(60 * SECOND)
 
-//	parameters_ptr := &[1]int{1}
+	parameters := make([]interface{}, 5)
+	parameters[0] = 4 // k
+	parameters[1] = []int{0, 0} // u_0
+	parameters[2] = []int{1, 1} // u_1
+	parameters[3] = []int{2, 2} // u_2
+	parameters[4] = []int{3, 3} // u_3
 
+
+/*
 	parameters_ptr := new(list.List)
 	parameters_ptr.PushFront(4) // k
 	parameters_ptr.PushFront([]int{0, 0}) // u_0
 	parameters_ptr.PushFront([]int{1, 1}) // u_1
 	parameters_ptr.PushFront([]int{2, 2}) // u_2
 	parameters_ptr.PushFront([]int{3, 3}) // u_3
-
-	task := task{-1, "https://raw.githubusercontent.com/sgaragagghu/sdcc-clustering-datasets/master/sdcc/2d-4c.csv", 1, 10, '\n', ',', 2, "clustering", parameters_ptr, 1, "clustering"}
+*/
+	task := task{-1, "https://raw.githubusercontent.com/sgaragagghu/sdcc-clustering-datasets/master/sdcc/2d-4c.csv", 1, 10, '\n', ',', 2, "clustering", parameters, 1, "clustering"}
 	select {
 	case *Task_channel_ptr <- &task:
 		select {
@@ -258,6 +266,8 @@ func scheduler_mapper_goroutine() {
 }
 
 func Master_main() {
+
+	gob.Register([]interface{}(nil))
 
 	// creating channel for communicating the heartbeat
 	// to the goroutine heartbeat manager
