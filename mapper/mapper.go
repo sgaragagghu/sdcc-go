@@ -52,11 +52,8 @@ func get_actual_begin(load_ptr *[]byte, separate_entries byte) (int64, error) {
 	found := false
 	var i int64 = 0
 	// TODO, see the next function
-	for char, err := buffered_read.ReadByte(); err == nil; char, err = buffered_read.ReadByte() {
-		if char == separate_entries {
-			found = true
-			break
-		}
+	for char, err := buffered_read.ReadByte(); err == nil && found == false; char, err = buffered_read.ReadByte() {
+		if char == separate_entries { found = true }
 		i += 1
 	}
 	if found == true {
@@ -82,9 +79,9 @@ func get_actual_end(load_ptr *[]byte, separate_entries byte, offset int64) (int6
 	} else { return offset + i, errors.New("Separate entries not found") }
 }
 
-func mapper_algorithm_clustering(properties_amount int, separate_entries byte, separate_properties byte, parameters []interface{}, load []byte) (map[string]map[string]struct{}) {
+func mapper_algorithm_clustering(properties_amount int, separate_entries byte, separate_properties byte, parameters []interface{}, load []byte) (map[string]interface{}) {
 
-	res := make(map[string]map[string]struct{})
+	res := make(map[string]interface{})
 
 	k := parameters[0].(int)
 
@@ -104,16 +101,17 @@ func mapper_algorithm_clustering(properties_amount int, separate_entries byte, s
 		point := make([]int, properties_amount)
 		var err error = nil
 		var char byte = 0
-		for char, err = buffered_read.ReadByte(); err != nil; char, err = buffered_read.ReadByte() {
+		for char, err = buffered_read.ReadByte(); err == nil; char, err = buffered_read.ReadByte() {
+			InfoLoggerPtr.Println(string(char))
 			if char == separate_properties {
-				if j < (properties_amount - 1)  {
+				if j < (properties_amount)  {
 					point[j - 1], _ = strconv.Atoi(s) //TODO check the error
 					full_s = s
 					s = ""
 					j += 1
 				} else { ErrorLoggerPtr.Fatal("Parsing failed") }
 			} else if char == separate_entries {
-				if j == (properties_amount - 1) {
+				if j == (properties_amount) {
 					point[j - 1], _ = strconv.Atoi(s) // TODO check the error
 					full_s += string(separate_properties) + s
 					break
@@ -132,13 +130,23 @@ func mapper_algorithm_clustering(properties_amount int, separate_entries byte, s
 		}
 		if err != nil {
 			if err == io.EOF {
+				InfoLoggerPtr.Println("break")
 				break
 			} else {
 				ErrorLoggerPtr.Fatal(err)
 			}
 		}
-		res[strconv.Itoa(min_index)][full_s] = struct{}{}
+		min_index_s := strconv.Itoa(min_index)
+		if m, ok := res[min_index_s]; ok {
+			m.(map[string]struct{})[full_s] = struct{}{}
+		} else {
+			m = make(map[string]struct{})
+			m.(map[string]struct{})[full_s] = struct{}{}
+			res[min_index_s] = m
+		}
+		InfoLoggerPtr.Println("Element", full_s, "added to", min_index_s)
 	}
+	InfoLoggerPtr.Println("end of loop")
 	return res
 }
 
@@ -152,11 +160,15 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 
 	actual_end, err := get_actual_end(load_ptr, job_ptr.Separate_entries, job_ptr.End - job_ptr.Begin)
 	if err != nil { ErrorLoggerPtr.Fatal("get_actual_end error:", err) }
-	// TODO check the error
-	res, _ := Call("mapper_algorithm_" + job_ptr.Map_algorithm, stub_storage, job_ptr.Properties_amount,
-		job_ptr.Map_algorithm_parameters, (*load_ptr)[actual_begin:actual_end])
-	job_ptr.Result = res.(*map[int]interface {})
 
+	InfoLoggerPtr.Println("Actual begin:", actual_begin, "actual end:", actual_end)
+
+	// TODO check the error
+	res, err := Call("mapper_algorithm_" + job_ptr.Map_algorithm, stub_storage, int(job_ptr.Properties_amount),
+		job_ptr.Separate_entries, job_ptr.Separate_properties, job_ptr.Map_algorithm_parameters, (*load_ptr)[actual_begin:actual_end])
+	if err != nil { ErrorLoggerPtr.Fatal("Error calling mapper_algorithm:", err) }
+	job_ptr.Result = res.(map[string]interface {})
+	InfoLoggerPtr.Println("HERE")
 	select {
 	case *chan_ptr <- job_ptr:
 	default:

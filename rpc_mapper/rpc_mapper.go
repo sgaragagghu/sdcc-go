@@ -27,7 +27,7 @@ type Job struct {
 	Properties_amount int8
 	Map_algorithm string
 	Map_algorithm_parameters interface{}
-	Result *map[int]interface{}
+	Result map[string]interface{}
 }
 
 
