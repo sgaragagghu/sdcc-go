@@ -7,9 +7,18 @@ import (
 	"net"
 	"errors"
 	"strconv"
+	"math"
 )
 
 type StubMapping map[string]interface{}
+
+func Euclidean_distance(i int, a []int, b []int) (float64) {
+	var squared_sum float64 = 0
+	for ; i > 0; i -= 1 {
+		squared_sum += float64(a[i]) * float64(a[i]) + float64(b[i]) * float64(b[i])
+	}
+	return math.Sqrt(squared_sum)
+}
 
 // Get preferred outbound ip of this machine
 func GetOutboundIP() net.IP {

@@ -17,6 +17,7 @@ import (
 	"container/list"
 	"bytes"
 	"bufio"
+	"io"
 	"math"
 	"errors"
 )
@@ -81,7 +82,9 @@ func get_actual_end(load_ptr *[]byte, separate_entries byte, offset int64) (int6
 	} else { return offset + i, errors.New("Separate entries not found") }
 }
 
-func mapper_algorithm_clustering(properties_amount int, separate_entries byte, separate_properties byte, parameters []interface{}, load []byte) () {
+func mapper_algorithm_clustering(properties_amount int, separate_entries byte, separate_properties byte, parameters []interface{}, load []byte) (map[string]map[string]struct{}) {
+
+	res := make(map[string]map[string]struct{})
 
 	k := parameters[0].(int)
 
@@ -97,28 +100,32 @@ func mapper_algorithm_clustering(properties_amount int, separate_entries byte, s
 	for {
 		j := 1
 		s := ""
-		point := make([]int, propetries_amount)
+		full_s := ""
+		point := make([]int, properties_amount)
 		var err error = nil
 		var char byte = 0
 		for char, err = buffered_read.ReadByte(); err != nil; char, err = buffered_read.ReadByte() {
-			s += string(char) // TODO Try to use a buffer like bytes.NewBufferString(ret) for better performances
 			if char == separate_properties {
 				if j < (properties_amount - 1)  {
 					point[j - 1], _ = strconv.Atoi(s) //TODO check the error
+					full_s = s
 					s = ""
 					j += 1
 				} else { ErrorLoggerPtr.Fatal("Parsing failed") }
 			} else if char == separate_entries {
 				if j == (properties_amount - 1) {
 					point[j - 1], _ = strconv.Atoi(s) // TODO check the error
+					full_s += string(separate_properties) + s
 					break
 				} else { ErrorLoggerPtr.Fatal("Parsing failed") }
+			} else {
+				s += string(char) // TODO Try to use a buffer like bytes.NewBufferString(ret) for better performances
 			}
 		}
 		min_index := 0
-		min := -1
+		var min float64 = -1
 		for i := k - 1 ; i >= 0; i -= 1 {
-			if distance := euclidean_norm(parameters_amount, u_vec[i], point); distance < min || min == -1 {
+			if distance := Euclidean_distance(properties_amount, u_vec[i], point); distance < min || min == -1 {
 				min_index = i
 				min = distance
 			}
@@ -130,7 +137,9 @@ func mapper_algorithm_clustering(properties_amount int, separate_entries byte, s
 				ErrorLoggerPtr.Fatal(err)
 			}
 		}
+		res[strconv.Itoa(min_index)][full_s] = struct{}{}
 	}
+	return res
 }
 
 func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
