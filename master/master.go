@@ -47,10 +47,10 @@ func task_injector_goroutine() { // TODO make a jsonrpc interface to send tasks 
 
 	parameters := make([]interface{}, 5)
 	parameters[0] = 4 // k
-	parameters[1] = []int{0, 0} // u_0
-	parameters[2] = []int{1, 1} // u_1
-	parameters[3] = []int{2, 2} // u_2
-	parameters[4] = []int{3, 3} // u_3
+	parameters[1] = []float64{0, 0} // u_0
+	parameters[2] = []float64{1, 1} // u_1
+	parameters[3] = []float64{2, 2} // u_2
+	parameters[4] = []float64{3, 3} // u_3
 
 
 /*

@@ -85,10 +85,10 @@ func mapper_algorithm_clustering(properties_amount int, separate_entries byte, s
 
 	k := parameters[0].(int)
 
-	u_vec := make([][]int, k)
+	u_vec := make([][]float64, k)
 	for i := range u_vec {
 		//u_vec[i] = make([]int, properties_amount)
-		u_vec[i] = parameters[i + 1].([]int)
+		u_vec[i] = parameters[i + 1].([]float64)
 	}
 
 	reader := bytes.NewReader(load)
@@ -98,21 +98,21 @@ func mapper_algorithm_clustering(properties_amount int, separate_entries byte, s
 		j := 1
 		s := ""
 		full_s := ""
-		point := make([]int, properties_amount)
+		point := make([]float64, properties_amount)
 		var err error = nil
 		var char byte = 0
 		for char, err = buffered_read.ReadByte(); err == nil; char, err = buffered_read.ReadByte() {
-			InfoLoggerPtr.Println(string(char))
+			//InfoLoggerPtr.Println(string(char))
 			if char == separate_properties {
 				if j < (properties_amount)  {
-					point[j - 1], _ = strconv.Atoi(s) //TODO check the error
+					point[j - 1], _ = strconv.ParseFloat(s, 64) //TODO check the error
 					full_s = s
 					s = ""
 					j += 1
 				} else { ErrorLoggerPtr.Fatal("Parsing failed") }
 			} else if char == separate_entries {
 				if j == (properties_amount) {
-					point[j - 1], _ = strconv.Atoi(s) // TODO check the error
+					point[j - 1], _ = strconv.ParseFloat(s, 64) // TODO check the error
 					full_s += string(separate_properties) + s
 					break
 				} else { ErrorLoggerPtr.Fatal("Parsing failed") }
@@ -130,7 +130,6 @@ func mapper_algorithm_clustering(properties_amount int, separate_entries byte, s
 		}
 		if err != nil {
 			if err == io.EOF {
-				InfoLoggerPtr.Println("break")
 				break
 			} else {
 				ErrorLoggerPtr.Fatal(err)
@@ -144,9 +143,8 @@ func mapper_algorithm_clustering(properties_amount int, separate_entries byte, s
 			m.(map[string]struct{})[full_s] = struct{}{}
 			res[min_index_s] = m
 		}
-		InfoLoggerPtr.Println("Element", full_s, "added to", min_index_s)
+		//InfoLoggerPtr.Println("Element", full_s, "added to", min_index_s)
 	}
-	InfoLoggerPtr.Println("end of loop")
 	return res
 }
 
@@ -161,14 +159,13 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 	actual_end, err := get_actual_end(load_ptr, job_ptr.Separate_entries, job_ptr.End - job_ptr.Begin)
 	if err != nil { ErrorLoggerPtr.Fatal("get_actual_end error:", err) }
 
-	InfoLoggerPtr.Println("Actual begin:", actual_begin, "actual end:", actual_end)
+	//InfoLoggerPtr.Println("Actual begin:", actual_begin, "actual end:", actual_end)
 
 	// TODO check the error
 	res, err := Call("mapper_algorithm_" + job_ptr.Map_algorithm, stub_storage, int(job_ptr.Properties_amount),
 		job_ptr.Separate_entries, job_ptr.Separate_properties, job_ptr.Map_algorithm_parameters, (*load_ptr)[actual_begin:actual_end])
 	if err != nil { ErrorLoggerPtr.Fatal("Error calling mapper_algorithm:", err) }
 	job_ptr.Result = res.(map[string]interface {})
-	InfoLoggerPtr.Println("HERE")
 	select {
 	case *chan_ptr <- job_ptr:
 	default:
@@ -206,6 +203,7 @@ func task_manager_goroutine() {
 			}
 
 		case job_finished_ptr := <-*job_finished_channel_ptr:
+			InfoLoggerPtr.Println("Job", job_finished_ptr.Id, "of task", job_finished_ptr.Task_id, "is finished")
 			if job_list_ptr, ok := task_hashmap[job_finished_ptr.Task_id]; ok {
 				job_list_ptr.Remove(job_list_ptr.Front())
 				if job_list_ptr.Len() == 0 {

@@ -13,10 +13,10 @@ import (
 
 type StubMapping map[string]interface{}
 
-func Euclidean_distance(i int, a []int, b []int) (float64) {
+func Euclidean_distance(i int, a []float64, b []float64) (float64) {
 	var squared_sum float64 = 0
 	for i -= 1; i >= 0; i -= 1 {
-		squared_sum += float64(a[i]) * float64(a[i]) + float64(b[i]) * float64(b[i])
+		squared_sum += a[i] * a[i] + b[i] * b[i]
 	}
 	return math.Sqrt(squared_sum)
 }
