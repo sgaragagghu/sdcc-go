@@ -170,6 +170,7 @@ func scheduler_mapper_goroutine() {
 					} else {
 						select {
 						case job_channel <- job_ptr:
+							InfoLoggerPtr.Println("Job", job_ptr.Id, "rescheduled.")
 						default:
 							ErrorLoggerPtr.Fatal("job_channel queue full") // TODO handle this case...
 						}
@@ -247,6 +248,7 @@ func scheduler_mapper_goroutine() {
 					if len(idle_mapper_hashmap) > 0 {
 						i := 0
 						for _, server_ptr := range idle_mapper_hashmap {
+							jobs[i].Server_id = server_ptr.Id
 							working_mapper_hashmap[server_ptr.Id] = server_ptr
 							go send_job_goroutine(server_ptr, jobs[i])
 						i += 1
