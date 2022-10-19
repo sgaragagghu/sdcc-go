@@ -8,7 +8,7 @@ import (
 const MAPPER_PORT = "6668"
 
 var (
-	Job_channel_ptr *chan *Job
+	Job_mapper_channel chan *Job
 )
 
 // create a type to get an interface
@@ -34,7 +34,7 @@ type Job struct {
 
 
 func (h Mapper_handler) Send_job(args *Job, reply *int) error {
-	*Job_channel_ptr <- args
+	Job_mapper_channel <- args
 	return nil
 }
 

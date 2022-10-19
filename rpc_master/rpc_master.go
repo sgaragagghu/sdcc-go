@@ -12,8 +12,8 @@ const (
 )
 
 var (
-	Heartbeat_channel_ptr *chan *Server
-	Job_completed_channel_ptr *chan *Job
+	Heartbeat_channel chan *Server
+	Job_mapper_completed_channel chan *Job
 )
 
 // create a type to get an interface
@@ -35,7 +35,7 @@ func (h Master_handler) Send_heartbeat(args *Server, reply *int) error {
 }
 
 func (h Master_handler) Job_completed(args *Job, reply *int) error {
-	*Job_completed_channel_ptr <- args
+	Job_mapper_completed_channel <- args
 	return nil
 }
 
