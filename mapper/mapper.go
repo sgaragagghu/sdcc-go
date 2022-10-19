@@ -79,7 +79,7 @@ func get_actual_end(load_ptr *[]byte, separate_entries byte, offset int64) (int6
 	} else { return offset + i, errors.New("Separate entries not found") }
 }
 
-func mapper_algorithm_clustering(properties_amount int, separate_entries byte, separate_properties byte, parameters []interface{}, load []byte) (map[string]interface{}) {
+func mapper_algorithm_clustering(properties_amount int, keys []string, separate_entries byte, separate_properties byte, parameters []interface{}, load []byte) (map[string]interface{}) {
 
 	res := make(map[string]interface{})
 
@@ -139,6 +139,7 @@ func mapper_algorithm_clustering(properties_amount int, separate_entries byte, s
 		if m, ok := res[min_index_s]; ok {
 			m.(map[string]struct{})[full_s] = struct{}{}
 		} else {
+			keys.append(min_index_s)
 			m = make(map[string]struct{})
 			m.(map[string]struct{})[full_s] = struct{}{}
 			res[min_index_s] = m
@@ -161,11 +162,14 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 
 	//InfoLoggerPtr.Println("Actual begin:", actual_begin, "actual end:", actual_end)
 
+	keys := make([]string)
+
 	// TODO check the error
-	res, err := Call("mapper_algorithm_" + job_ptr.Map_algorithm, stub_storage, int(job_ptr.Properties_amount),
+	res, err := Call("mapper_algorithm_" + job_ptr.Map_algorithm, stub_storage, int(job_ptr.Properties_amount), keys,
 		job_ptr.Separate_entries, job_ptr.Separate_properties, job_ptr.Map_algorithm_parameters, (*load_ptr)[actual_begin:actual_end])
 	if err != nil { ErrorLoggerPtr.Fatal("Error calling mapper_algorithm:", err) }
 	job_ptr.Result = res.(map[string]interface {})
+	job_ptr.Keys = keys
 	select {
 	case *chan_ptr <- job_ptr:
 	default:
@@ -173,32 +177,56 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 	}
 }
 
+func send_completed_job_goroutine(job_ptr *Job) {
+
+	// TODO probably it is needed to use the already connection which is in place for the heartbeat
+
+	// connect to server via rpc tcp
+	client, err := rpc.Dial("tcp", MASTER_IP + ":" + MASTER_PORT)
+	defer client.Close()
+	if err != nil {
+		ErrorLoggerPtr.Fatal(err)
+	}
+
+	var reply int
+
+	err = client.Call("Mapper_handler.Job_completed", job_ptr, &reply)
+	if err != nil {
+		ErrorLoggerPtr.Fatal(err)
+	}
+	InfoLoggerPtr.Println("Completed job sent to the master.")
+
+}
+
 func task_manager_goroutine() {
 
 	state := IDLE
 	task_hashmap := make(map[string]*list.List)
+	task_finished_hashmap := orderedmap.NewOrderedMap()
 	ready_event_channel := make(chan struct{}, 1000)
 	job_finished_channel := make(chan *Job, 1000)
 	job_finished_channel_ptr := &job_finished_channel
+	next_check_task := ""
 
 	for {
 		select {
 		case job_ptr := <-*Job_channel_ptr:
 			InfoLoggerPtr.Println("Received Task", job_ptr.Task_id, "job", job_ptr.Id)
-			job_list_ptr, ok := task_hashmap[job_ptr.Task_id]
-			if ok {
-				job_list_ptr.PushBack(job_ptr)
-			} else  {
-				job_list_ptr = new(list.List)
-				job_list_ptr.PushBack(job_ptr)
-				task_hashmap[job_ptr.Task_id] = job_list_ptr
+
+			{
+				job_list_ptr, ok := task_hashmap[job_ptr.Task_id]
+				if !ok {
+					job_list_ptr = new(list.List)
+					task_hashmap[job_ptr.Task_id] = job_list_ptr
+				}
+					job_list_ptr.PushBack(job_ptr)
 			}
 
 			if state == IDLE {
 				select {
 				case ready_event_channel <- struct{}{}:
 				default:
-				ErrorLoggerPtr.Fatal("ready_event_channel is full.")
+					ErrorLoggerPtr.Fatal("ready_event_channel is full.")
 				}
 			}
 
@@ -206,11 +234,13 @@ func task_manager_goroutine() {
 			InfoLoggerPtr.Println("Job", job_finished_ptr.Id, "of task", job_finished_ptr.Task_id, "is finished")
 			if job_list_ptr, ok := task_hashmap[job_finished_ptr.Task_id]; ok {
 				job_list_ptr.Remove(job_list_ptr.Front())
-				if job_list_ptr.Len() == 0 {
-					delete (task_hashmap, job_finished_ptr.Task_id)
-				}
-			} else {
-				ErrorLoggerPtr.Fatal("Finished job not found!")
+				if job_list_ptr.Len() == 0 { delete (task_hashmap, job_finished_ptr.Task_id) }
+			} else { ErrorLoggerPtr.Fatal("Finished job not found!") }
+
+			{
+				job_map, ok := task_finished_hashmap.Get(job_finished_ptr.Task_id)
+				if !ok { task_finished_hashmap.Set(job_finished_ptr.Task_id, make(map[string])) }
+				job_map[job_finished_ptr.Id] = job_finished_ptr
 			}
 
 			if len(task_hashmap) > 0 {
@@ -220,6 +250,11 @@ func task_manager_goroutine() {
 					ErrorLoggerPtr.Fatal("ready_event_channel is full.")
 				}
 			}
+
+
+			job_light := *job_finished_ptr
+			job_light.Result = nil
+			go send_completed_job_goroutine(&job_light) // TODO add and manage errors
 
 			state = IDLE
 
@@ -232,18 +267,33 @@ func task_manager_goroutine() {
 					for task_id, _ := range task_hashmap { // TODO change the hashmap with an ordered one.
 						task_id_int, err = strconv.Atoi(task_id)
 						if err != nil {
-						ErrorLoggerPtr.Fatal("String to integer error:", err) // TODO consider to use a integer instead of a string.
+							ErrorLoggerPtr.Fatal("String to integer error:", err) // TODO consider to use a integer instead of a string.
 						}
-						if min == -1 || min > task_id_int {
-							min = task_id_int
-						}
+						if min == -1 || min > task_id_int { min = task_id_int }
 					}
 					job_ptr := task_hashmap[strconv.Itoa(task_id_int)].Front().Value.(*Job)
 					go job_manager_goroutine(job_ptr, job_finished_channel_ptr)
 					state = BUSY
-				} else {
-					ErrorLoggerPtr.Fatal("Unexpected empty task hashmap.")
-				}
+				} else { ErrorLoggerPtr.Fatal("Unexpected empty task hashmap.") }
+			}
+		case <-time.After(10 * SECOND):
+			if task_finished_hashmap.Front() != nil {
+				if next_check_task == "" { next_check_task = task_finished_hashmap.Front().Key }
+				if el := task_finished_hashmap.GetValue(next_check_task); el != n; {
+					job_map_ptr := el.Value.(map[string])
+					checking_task := next_check_task
+					if el = el.Next(); el != nil {
+						next_check_task = el.Key
+					} else if el = task_finished_hashmap.Front(); el != nil {
+						next_check_task = el.Key
+					} else {
+						next_check_task = ""
+					}
+					for key, value := range job_map_ptr {
+						if value.Delete { delete(job_map_ptr, key) }
+					}
+					if len(job_map_ptr) == 0 { task_finished_hashmap.Remove(checking_task) }
+				} else { ErrorLoggerPtr.Fatal("Task is missing") }
 			}
 		}
 	}

@@ -250,6 +250,7 @@ func scheduler_mapper_goroutine() {
 						for _, server_ptr := range idle_mapper_hashmap {
 							jobs[i].Server_id = server_ptr.Id
 							working_mapper_hashmap[server_ptr.Id] = server_ptr
+							server_ptr.Jobs[job_ptr.Id] = job_ptr
 							go send_job_goroutine(server_ptr, jobs[i])
 						i += 1
 						}

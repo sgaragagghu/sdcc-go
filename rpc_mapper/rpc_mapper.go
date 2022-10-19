@@ -28,6 +28,8 @@ type Job struct {
 	Map_algorithm string
 	Map_algorithm_parameters interface{}
 	Result map[string]interface{}
+	Keys []string
+	Delete bool
 }
 
 
