@@ -35,6 +35,24 @@ var (
 	ErrorLoggerPtr		*log.Logger
 )
 
+type Job struct {
+	Id string
+	Task_id string
+	Server_id string
+	Resource_link string
+	Begin int64
+	End int64
+	Margin int8
+	Separate_entries byte
+	Separate_properties byte
+	Properties_amount int8
+	Map_algorithm string
+	Map_algorithm_parameters interface{}
+	Result map[string]interface{}
+	Keys []string
+	Delete bool
+}
+
 func init() {
 
 	InfoLoggerPtr = log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)

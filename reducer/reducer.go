@@ -1,8 +1,8 @@
-package mapper
+package reducer
 
 import (
 	. "../share"
-	. "../rpc_mapper"
+	. "../rpc_reducer"
 	. "../rpc_master"
 	"fmt"
 	"os"
@@ -46,40 +46,7 @@ func heartbeat_goroutine(client *rpc.Client) {
 
 }
 
-func get_actual_begin(load_ptr *[]byte, separate_entries byte) (int64, error) {
-	reader := bytes.NewReader(*load_ptr)
-	buffered_read := bufio.NewReader(reader)
-	found := false
-	var i int64 = 0
-	// TODO, see the next function
-	for char, err := buffered_read.ReadByte(); err == nil && found == false; char, err = buffered_read.ReadByte() {
-		if char == separate_entries { found = true }
-		i += 1
-	}
-	if found == true {
-		return i, nil
-	} else { return i, errors.New("Separate entries not found") }
-}
-
-func get_actual_end(load_ptr *[]byte, separate_entries byte, offset int64) (int64, error) {
-	reader := bytes.NewReader((*load_ptr)[offset - 1:]) //TODO check error
-	buffered_read := bufio.NewReader(reader)
-	found := false
-	var i int64 = -1
-	// TODO check if the buffer the fox stopped cause the buffer is empty but not the byte array
-	for char, err := buffered_read.ReadByte(); err == nil; char, err = buffered_read.ReadByte() { // TODO check the error if != EOF
-		if char == separate_entries {
-			found = true
-			break
-		}
-		i += 1
-	}
-	if found == true {
-		return offset + i, nil
-	} else { return offset + i, errors.New("Separate entries not found") }
-}
-
-func mapper_algorithm_clustering(properties_amount int, keys []string, separate_entries byte, separate_properties byte, parameters []interface{}, load []byte) (map[string]interface{}) {
+func reducer_algorithm_clustering(properties_amount int, keys []string, separate_entries byte, separate_properties byte, parameters []interface{}, load []byte) (map[string]interface{}) {
 
 	res := make(map[string]interface{})
 
@@ -165,9 +132,9 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 	keys := make([]string)
 
 	// TODO check the error
-	res, err := Call("mapper_algorithm_" + job_ptr.Map_algorithm, stub_storage, int(job_ptr.Properties_amount), keys,
-		job_ptr.Separate_entries, job_ptr.Separate_properties, job_ptr.Map_algorithm_parameters, (*load_ptr)[actual_begin:actual_end])
-	if err != nil { ErrorLoggerPtr.Fatal("Error calling mapper_algorithm:", err) }
+	res, err := Call("reducer_algorithm_" + job_ptr.Reduce_algorithm, stub_storage, int(job_ptr.Properties_amount), keys,
+		job_ptr.Separate_entries, job_ptr.Separate_properties, job_ptr.Reduce_algorithm_parameters, (*load_ptr)[actual_begin:actual_end])
+	if err != nil { ErrorLoggerPtr.Fatal("Error calling reducer_algorithm:", err) }
 	job_ptr.Result = res.(map[string]interface {})
 	job_ptr.Keys = keys
 	select {
@@ -190,7 +157,7 @@ func send_completed_job_goroutine(job_ptr *Job) {
 
 	var reply int
 
-	err = client.Call("Mapper_handler.Job_mapper_completed", job_ptr, &reply)
+	err = client.Call("Mapper_handler.Job_reducer_completed", job_ptr, &reply)
 	if err != nil {
 		ErrorLoggerPtr.Fatal(err)
 	}
@@ -304,7 +271,7 @@ func init() {
 	gob.Register([]interface{}(nil))
 
 	stub_storage = map[string]interface{}{
-		"mapper_algorithm_clustering": mapper_algorithm_clustering,
+		"reducer_algorithm_clustering": reducer_algorithm_clustering,
 		//"funcB": funcB,
 	}
 
@@ -331,10 +298,10 @@ func init() {
 		ErrorLoggerPtr.Fatal("Empty ID.", err)
 	}
 
-	server = &Server{id, ip, MAPPER_PORT, time.Now(), nil, "MAPPER"}
+	server = &Server{id, ip, REDUCER_PORT, time.Now(), nil, "REDUCER"}
 }
 
-func Mapper_main() {
+func Reducer_main() {
 
 	// connect to server via rpc tcp
 	client, err := rpc.Dial("tcp", MASTER_IP + ":" + MASTER_PORT)
@@ -353,13 +320,13 @@ func Mapper_main() {
 	go task_manager_goroutine()
 	go heartbeat_goroutine(client)
 
-	mapper_handler := new(Mapper_handler)
+	reducer_handler := new(Reducer_handler)
 
-	// register Mapper_handler as RPC interface
-	rpc.Register(mapper_handler)
+	// register Reducer_handler as RPC interface
+	rpc.Register(reducer_handler)
 
 	// service address of server
-	service := ":" + MAPPER_PORT
+	service := ":" + REDUCER_PORT
 
 	// create tcp address
 	tcpAddr, err := net.ResolveTCPAddr("tcp", service)
@@ -374,7 +341,7 @@ func Mapper_main() {
 	}
 
 	for {
-		// handle tcp mapper connections
+		// handle tcp reducer connections
 		conn, err := listener.Accept()
 		if err != nil {
 			WarningLoggerPtr.Println("listener accept error:", err)
@@ -383,7 +350,7 @@ func Mapper_main() {
 		// print connection info
 		InfoLoggerPtr.Println("received message", reflect.TypeOf(conn), conn)
 
-		// handle mapper connections via rpc
+		// handle reducer connections via rpc
 		go rpc.ServeConn(conn)
 	}
 }

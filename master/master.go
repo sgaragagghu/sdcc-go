@@ -148,7 +148,7 @@ func scheduler_mapper_goroutine() {
 	job_channel := make(chan *Job, 1000)
 	idle_mapper_hashmap := make(map[string]*Server)
 	working_mapper_hashmap := make(map[string]*Server)
-
+	keys_x_servers map[string]map[string]struct{}
 
 	for {
 		select {
@@ -199,7 +199,7 @@ func scheduler_mapper_goroutine() {
 				select {
 				case job_ptr := <-job_channel:
 					job_ptr.Server_id = job_completed_ptr.Server_id
-					InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to server", job_ptr.Server_id)
+					InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to mapper", job_ptr.Server_id)
 					(*mapper_job_map_ptr)[job_ptr.Id] = job_ptr
 					go send_job_goroutine(working_mapper_hashmap[job_completed_ptr.Server_id], job_ptr)
 				default:
@@ -320,62 +320,62 @@ func scheduler_reducer_goroutine() {
 			default:
 				idle_reducer_hashmap[add_reducer_ptr.Id] = add_reducer_ptr
 			}
-		case job_completed_ptr := <-Job_mapper_completed_channel:
-			mapper_job_map_ptr := working_mapper_hashmap[job_completed_ptr.Server_id].Jobs
-			delete(*mapper_job_map_ptr, job_completed_ptr.Id)
-			if len(*mapper_job_map_ptr) == 0 {
+		case job_completed_ptr := <-Job_reducer_completed_channel:
+			reducer_job_map_ptr := working_reducer_hashmap[job_completed_ptr.Server_id].Jobs
+			delete(*reducer_job_map_ptr, job_completed_ptr.Id)
+			if len(*reducer_job_map_ptr) == 0 {
 				select {
 				case job_ptr := <-job_channel:
 					job_ptr.Server_id = job_completed_ptr.Server_id
-					InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to server", job_ptr.Server_id)
-					(*mapper_job_map_ptr)[job_ptr.Id] = job_ptr
-					go send_job_goroutine(working_mapper_hashmap[job_completed_ptr.Server_id], job_ptr)
+					InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to reducer", job_ptr.Server_id)
+					(*reducer_job_map_ptr)[job_ptr.Id] = job_ptr
+					go send_job_goroutine(working_reducer_hashmap[job_completed_ptr.Server_id], job_ptr)
 				default:
-					idle_mapper_hashmap[job_completed_ptr.Server_id] = working_mapper_hashmap[job_completed_ptr.Server_id]
-					delete(working_mapper_hashmap, job_completed_ptr.Server_id)
+					idle_reducer_hashmap[job_completed_ptr.Server_id] = working_reducer_hashmap[job_completed_ptr.Server_id]
+					delete(working_reducer_hashmap, job_completed_ptr.Server_id)
 				}
-				if len(working_mapper_hashmap) == 0 {
+				if len(working_reducer_hashmap) == 0 {
 					InfoLoggerPtr.Println("Task", job_completed_ptr.Id, "completed")
 					state = IDLE
 				}
-				if state == IDLE && len(Task_mapper_channel) > 0 { // if the curent task finished and theres a task
+				if state == IDLE && len(Task_reducer_channel) > 0 { // if the curent task finished and theres a task
 					select {
-					case New_task_mapper_event_channel <-struct{}{}:
+					case New_task_reducer_event_channel <-struct{}{}:
 					default:
-						ErrorLoggerPtr.Fatal("New_task_mapper_event_channel full.")
+						ErrorLoggerPtr.Fatal("New_task_reducer_event_channel full.")
 					}
 				}
 			}
-		case <-New_task_mapper_event_channel:
-			if len(working_mapper_hashmap) == 0 { // if the curent task finished
+		case <-New_task_reducer_event_channel:
+			if len(working_reducer_hashmap) == 0 { // if the curent task finished
 				select {
-				case task_ptr := <-Task_mapper_channel:
+				case task_ptr := <-Task_reducer_channel:
 					task_ptr.id = task_counter
 					task_counter += 1
 					state = BUSY
 					InfoLoggerPtr.Println("Scheduling task:", task_ptr.id)
 					resource_size := Get_file_size(task_ptr.resource_link)
 					mappers_amount := MinOf_int32(task_ptr.mappers_amount, int32(len(idle_mapper_hashmap))) // TODO check overflow
-					if mappers_amount == 0 { mappers_amount = 1 }
-					slice_size := int64(math.Abs(float64(resource_size) / float64(mappers_amount)))
-					jobs := make([]*Job, mappers_amount)
+					if reducers_amount == 0 { reducers_amount = 1 }
+					slice_size := int64(math.Abs(float64(resource_size) / float64(reducers_amount)))
+					jobs := make([]*Job, reducers_amount)
 					{
 						var i int32 = 0
-						for ; i < mappers_amount; i += 1 {
+						for ; i < reducers_amount; i += 1 {
 							begin := int64(i) * slice_size
 							end := (int64(i) + 1) * slice_size
 							if i == 0 { begin = 0 }
-							if i == mappers_amount { end = resource_size }
+							if i == reducers_amount { end = resource_size }
 
 							jobs[i] = &Job{strconv.FormatInt(int64(i), 10), strconv.FormatInt(int64(task_ptr.id), 10),
 								"", task_ptr.resource_link, begin, end, task_ptr.margin,
 								task_ptr.separate_entries, task_ptr.separate_properties, task_ptr.properties_amount,
-								task_ptr.map_algorithm, task_ptr.map_algorithm_parameters, nil}
+								task_ptr.reduce_algorithm, task_ptr.reduce_algorithm_parameters, nil}
 						}
 					}
-					if len(idle_mapper_hashmap) > 0 {
+					if len(idle_reducer_hashmap) > 0 {
 						i := 0
-						for _, server_ptr := range idle_mapper_hashmap {
+						for _, server_ptr := range idle_reducer_hashmap {
 							jobs[i].Server_id = server_ptr.Id
 							working_mapper_hashmap[server_ptr.Id] = server_ptr
 							server_ptr.Jobs[job_ptr.Id] = job_ptr

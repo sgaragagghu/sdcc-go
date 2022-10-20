@@ -34,8 +34,12 @@ func (h Master_handler) Send_heartbeat(args *Server, reply *int) error {
 	return nil
 }
 
-func (h Master_handler) Job_completed(args *Job, reply *int) error {
+func (h Master_handler) Job_mapper_completed(args *Job, reply *int) error {
 	Job_mapper_completed_channel <- args
 	return nil
 }
 
+func (h Master_handler) Job_reducer_completed(args *Job, reply *int) error {
+	Job_reducer_completed_channel <- args
+	return nil
+}
