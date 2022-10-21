@@ -200,10 +200,12 @@ func scheduler_mapper_goroutine() {
 			for _, v := range job_completed_ptr.Keys {
 				value, ok := keys_x_servers.Get(v)
 				if !ok {
-					value = make(map[string]struct{})
+					value = make(map[string]*Server)
 					keys_x_servers.Set(v, value)
 				}
-				value[job_completed_ptr.Server_id] = struct{}{}
+				server_light := working_mapper_hashmap[job_completed_ptr.Server_id]
+				server_light.Jobs = nil // TODO manage it in a way to not waste memory
+				value[job_completed_ptr.Server_id] = server_light
 			}
 
 			if len(*mapper_job_map_ptr) == 0 {
@@ -397,12 +399,12 @@ func scheduler_reducer_goroutine() {
 								slice_rest -= 1
 							}
 
-							keys := make(map[string]map[string]struct{})
+							keys := make(map[string]map[string]*Server)
 							{
 								j := 0
 								el := task_ptr.keys_x_servers.Front
 								for ; j < current_slice_size || el.Next != nil; j += 1 {
-									value = el.Value.(map[string]struct{})
+									value = el.Value.(map[string]*Server)
 									keys[el.Key.(string)] = value
 								}
 								if j < current_slice_size && el.Next == nil {

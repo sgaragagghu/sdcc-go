@@ -118,16 +118,20 @@ func reducer_algorithm_clustering(properties_amount int, keys []string, separate
 
 func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 
-	// TODO check possible overflow
-	load_ptr := Http_download(job_ptr.Resource_link, job_ptr.Begin, job_ptr.Begin + int64(math.Abs(float64((job_ptr.End - job_ptr.Begin)) * ((100 + float64(job_ptr.Margin))/100))))
+	requests_map := NewOrdereMap()
 
-	actual_begin, err := get_actual_begin(load_ptr, job_ptr.Separate_entries)
-	if err != nil { ErrorLoggerPtr.Fatal("get_actual_begin error:", err) }
+	for i, v := keys_x_servers {
+		value, ok := request_map.Get(v)
+		if !ok {
+			keys := make([]string)
+			value = Request{keys, 0, nil}
+		}
+		value.body.append(i)
+	}
 
-	actual_end, err := get_actual_end(load_ptr, job_ptr.Separate_entries, job_ptr.End - job_ptr.Begin)
-	if err != nil { ErrorLoggerPtr.Fatal("get_actual_end error:", err) }
-
-	//InfoLoggerPtr.Println("Actual begin:", actual_begin, "actual end:", actual_end)
+	for el = requests_map.Front(); el != nil; el = el.Next() {
+		value
+	}
 
 	keys := make([]string)
 

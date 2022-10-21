@@ -11,6 +11,12 @@ var (
 	Job_mapper_channel chan *Job
 )
 
+type Request struct {
+	tries int
+	time time.Time
+	body interface{}
+}
+
 // create a type to get an interface
 type Mapper_handler int
 
