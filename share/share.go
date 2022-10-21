@@ -55,6 +55,7 @@ type Job struct {
 	Reduce_algorithm_parameters interface{}
 	Reduce_result map[string]interface{}
 	Reduce_keys []string
+	keys_x_servers map[string]map[string]struct{}
 	Delete bool
 }
 

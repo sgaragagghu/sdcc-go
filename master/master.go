@@ -149,7 +149,7 @@ func scheduler_mapper_goroutine() {
 	job_channel := make(chan *Job, 1000)
 	idle_mapper_hashmap := make(map[string]*Server)
 	working_mapper_hashmap := make(map[string]*Server)
-	keys_x_servers map[string]map[string]struct{}
+	keys_x_servers := NewOrderedMap()
 
 	for {
 		select {
@@ -198,9 +198,10 @@ func scheduler_mapper_goroutine() {
 			delete(*mapper_job_map_ptr, job_completed_ptr.Id)
 
 			for _, v := range job_completed_ptr.Keys {
-				value, ok := keys_x_servers[v]
+				value, ok := keys_x_servers.Get(v)
 				if !ok {
-					keys_x_servers = make(map[string]struct{})
+					value = make(map[string]struct{})
+					keys_x_servers.Set(v, value)
 				}
 				value[job_completed_ptr.Server_id] = struct{}{}
 			}
@@ -241,7 +242,7 @@ func scheduler_mapper_goroutine() {
 						ErrorLoggerPtr.Fatal("Task reduce channel is full")
 					}
 
-					keys_x_servers = make(map[string]map[string]struct{})
+					keys_x_servers = NewOrderedMap()
 				}
 			}
 		case <-New_task_mapper_event_channel:
@@ -256,10 +257,14 @@ func scheduler_mapper_goroutine() {
 					mappers_amount := MinOf_int32(task_ptr.mappers_amount, int32(len(idle_mapper_hashmap))) // TODO check overflow
 					if mappers_amount == 0 { mappers_amount = 1 }
 					slice_size := int64(math.Abs(float64(resource_size) / float64(mappers_amount)))
-					jobs := make([]*Job, keys_amount)
+					jobs := make([]*Job, mappers_amount)
 					{
 						var i int32 = 0
-						for ; i < keys_amount; i += 1 {
+						for ; i < mappers_amount; i += 1 {
+						begin := int64(i) * slice_size
+						end := (int64(i) + 1) * slice_size
+						if i == 0 { begin = 0 }
+						if i == mappers_amount { end = resource_size }
 							jobs[i] = &Job{strconv.FormatInt(int64(i), 10), strconv.FormatInt(int64(task_ptr.id), 10),
 								"", task_ptr.resource_link, begin, end, task_ptr.margin,
 								task_ptr.separate_entries, task_ptr.separate_properties, task_ptr.properties_amount,
@@ -373,20 +378,42 @@ func scheduler_reducer_goroutine() {
 					state = BUSY
 					InfoLoggerPtr.Println("Scheduling reducer task:", task_ptr.id)
 					keys_amount = len(task_ptr.keys_x_servers)
-					mappers_amount := MinOf_int32(task_ptr.reducers_amount, int32(len(idle_reducer_hashmap))) // TODO check overflow
+					reducers_amount := MinOf_int32(task_ptr.reducers_amount, int32(len(idle_reducer_hashmap))) // TODO check overflow
+					slice_size := 1
+					slice_rest := 0
+					if keys_amount > reducers {
+						slice_size = int(Abs(float64(keys_amount) / float64(reducers_amount))) // TODO check overflow
+						slice_rest = keys_amount % reducers_amount
+					}
 					if reducers_amount == 0 { reducers_amount = 1 }
 
 					jobs := make([]*Job, reducers_amount)
 					{
 						var i int32 = 0
 						for ; i < reducers_amount; i += 1 {
-							if i == 0 { begin = 0 }
-							if i == reducers_amount { end = resource_size }
+							current_slice_size := slice_size
+							if slice_rest > 0 {
+								current_slice_size += 1
+								slice_rest -= 1
+							}
+
+							keys := make(map[string]map[string]struct{})
+							{
+								j := 0
+								el := task_ptr.keys_x_servers.Front
+								for ; j < current_slice_size || el.Next != nil; j += 1 {
+									value = el.Value.(map[string]struct{})
+									keys[el.Key.(string)] = value
+								}
+								if j < current_slice_size && el.Next == nil {
+									ErrorLoggerPtr.Fatal("There are less keys than expected.")
+								}
+							}
 
 							jobs[i] = &Job{strconv.FormatInt(int64(i), 10), strconv.FormatInt(int64(task_ptr.id), 10),
 								"", "", 0, 0, 0, "", task_ptr.separate_properties, task_ptr.properties_amount,
 								"", nil, nil, nil, task_ptr.reducers_amount, task_ptr.reduce_algorithm,
-								task_ptr.reduce_algorithm_parameters, nil, nil, false}
+								task_ptr.reduce_algorithm_parameters, nil, nil, keys, false}
 						}
 					}
 					if len(idle_reducer_hashmap) > 0 {
