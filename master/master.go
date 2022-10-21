@@ -28,8 +28,9 @@ type task struct {
 	map_algorithm_parameters interface{}
 //	shuffle_algorithm string
 //	order_algorithm string
-	reducer_amount int32
+	reducers_amount int32
 	reduce_algorithm string
+	keys_x_servers map[string]map[string]struct{}
 }
 
 var (
@@ -195,6 +196,15 @@ func scheduler_mapper_goroutine() {
 		case job_completed_ptr := <-Job_mapper_completed_channel:
 			mapper_job_map_ptr := working_mapper_hashmap[job_completed_ptr.Server_id].Jobs
 			delete(*mapper_job_map_ptr, job_completed_ptr.Id)
+
+			for _, v := range job_completed_ptr.Keys {
+				value, ok := keys_x_servers[v]
+				if !ok {
+					keys_x_servers = make(map[string]struct{})
+				}
+				value[job_completed_ptr.Server_id] = struct{}{}
+			}
+
 			if len(*mapper_job_map_ptr) == 0 {
 				select {
 				case job_ptr := <-job_channel:
@@ -216,6 +226,9 @@ func scheduler_mapper_goroutine() {
 					default:
 						ErrorLoggerPtr.Fatal("New_task_mapper_event_channel full.")
 					}
+					red_task := task{job_completed_ptr.Task_id, "", 0, 0, "", job_completed_ptr.Separate_properties, job_completed_ptr.Properties_amount, "", nil, job_completed_ptr.Reducers_amount, job_complete_ptr.Reduce_algorithm, keys_x_servers}
+					// TODO build the task and send it to the reduced scheduler!
+					keys_x_servers = make(map[string]map[string]struct{})
 				}
 			}
 		case <-New_task_mapper_event_channel:

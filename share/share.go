@@ -48,8 +48,13 @@ type Job struct {
 	Properties_amount int8
 	Map_algorithm string
 	Map_algorithm_parameters interface{}
-	Result map[string]interface{}
-	Keys []string
+	Map_result map[string]interface{}
+	Map_keys []string
+	Reducers_amount int
+	Reduce_algorithm string
+	Reduce_algorithm_parameters interface{}
+	Reduce_result map[string]interface{}
+	Reduce_keys []string
 	Delete bool
 }
 
