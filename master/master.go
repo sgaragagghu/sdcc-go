@@ -226,8 +226,21 @@ func scheduler_mapper_goroutine() {
 					default:
 						ErrorLoggerPtr.Fatal("New_task_mapper_event_channel full.")
 					}
-					red_task := task{job_completed_ptr.Task_id, "", 0, 0, "", job_completed_ptr.Separate_properties, job_completed_ptr.Properties_amount, "", nil, job_completed_ptr.Reducers_amount, job_complete_ptr.Reduce_algorithm, keys_x_servers}
-					// TODO build the task and send it to the reduced scheduler!
+					red_task := task{job_completed_ptr.Task_id, "", 0, 0, "", job_completed_ptr.Separate_properties,
+						job_completed_ptr.Properties_amount, "", nil, job_completed_ptr.Reducers_amount,
+						job_complete_ptr.Reduce_algorithm, keys_x_servers}
+
+					select {
+					case Task_reduce_channel <- &task:
+						select {
+						case New_task_reduce_event_channel <- struct{}{}:
+						default:
+							ErrorLoggerPtr.Fatal("Task channel is full")
+						}
+					default:
+						ErrorLoggerPtr.Fatal("Task reduce channel is full")
+					}
+
 					keys_x_servers = make(map[string]map[string]struct{})
 				}
 			}
@@ -238,20 +251,15 @@ func scheduler_mapper_goroutine() {
 					task_ptr.id = task_counter
 					task_counter += 1
 					state = BUSY
-					InfoLoggerPtr.Println("Scheduling task:", task_ptr.id)
+					InfoLoggerPtr.Println("Scheduling mapper task:", task_ptr.id)
 					resource_size := Get_file_size(task_ptr.resource_link)
 					mappers_amount := MinOf_int32(task_ptr.mappers_amount, int32(len(idle_mapper_hashmap))) // TODO check overflow
 					if mappers_amount == 0 { mappers_amount = 1 }
 					slice_size := int64(math.Abs(float64(resource_size) / float64(mappers_amount)))
-					jobs := make([]*Job, mappers_amount)
+					jobs := make([]*Job, keys_amount)
 					{
 						var i int32 = 0
-						for ; i < mappers_amount; i += 1 {
-							begin := int64(i) * slice_size
-							end := (int64(i) + 1) * slice_size
-							if i == 0 { begin = 0 }
-							if i == mappers_amount { end = resource_size }
-
+						for ; i < keys_amount; i += 1 {
 							jobs[i] = &Job{strconv.FormatInt(int64(i), 10), strconv.FormatInt(int64(task_ptr.id), 10),
 								"", task_ptr.resource_link, begin, end, task_ptr.margin,
 								task_ptr.separate_entries, task_ptr.separate_properties, task_ptr.properties_amount,
@@ -284,7 +292,6 @@ func scheduler_mapper_goroutine() {
 func scheduler_reducer_goroutine() {
 	InfoLoggerPtr.Println("Scheduler_reducer_goroutine started.")
 
-	var task_counter int32 = 0
 	state := IDLE
 	job_channel := make(chan *Job, 1000)
 	idle_reducer_hashmap := make(map[string]*Server)
@@ -363,27 +370,23 @@ func scheduler_reducer_goroutine() {
 			if len(working_reducer_hashmap) == 0 { // if the curent task finished
 				select {
 				case task_ptr := <-Task_reducer_channel:
-					task_ptr.id = task_counter
-					task_counter += 1
 					state = BUSY
-					InfoLoggerPtr.Println("Scheduling task:", task_ptr.id)
-					resource_size := Get_file_size(task_ptr.resource_link)
-					mappers_amount := MinOf_int32(task_ptr.mappers_amount, int32(len(idle_mapper_hashmap))) // TODO check overflow
+					InfoLoggerPtr.Println("Scheduling reducer task:", task_ptr.id)
+					keys_amount = len(task_ptr.keys_x_servers)
+					mappers_amount := MinOf_int32(task_ptr.reducers_amount, int32(len(idle_reducer_hashmap))) // TODO check overflow
 					if reducers_amount == 0 { reducers_amount = 1 }
-					slice_size := int64(math.Abs(float64(resource_size) / float64(reducers_amount)))
+
 					jobs := make([]*Job, reducers_amount)
 					{
 						var i int32 = 0
 						for ; i < reducers_amount; i += 1 {
-							begin := int64(i) * slice_size
-							end := (int64(i) + 1) * slice_size
 							if i == 0 { begin = 0 }
 							if i == reducers_amount { end = resource_size }
 
 							jobs[i] = &Job{strconv.FormatInt(int64(i), 10), strconv.FormatInt(int64(task_ptr.id), 10),
-								"", task_ptr.resource_link, begin, end, task_ptr.margin,
-								task_ptr.separate_entries, task_ptr.separate_properties, task_ptr.properties_amount,
-								task_ptr.reduce_algorithm, task_ptr.reduce_algorithm_parameters, nil}
+								"", "", 0, 0, 0, "", task_ptr.separate_properties, task_ptr.properties_amount,
+								"", nil, nil, nil, task_ptr.reducers_amount, task_ptr.reduce_algorithm,
+								task_ptr.reduce_algorithm_parameters, nil, nil, false}
 						}
 					}
 					if len(idle_reducer_hashmap) > 0 {
