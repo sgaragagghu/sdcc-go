@@ -119,18 +119,46 @@ func reducer_algorithm_clustering(properties_amount int, keys []string, separate
 func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 
 	requests_map := NewOrdereMap()
+	keys_x_values := map[string]interface{}
 
-	for i, v := keys_x_servers {
-		value, ok := request_map.Get(v)
-		if !ok {
-			keys := make([]string)
-			value = Request{keys, 0, nil}
+	for i, v_map := keys_x_servers {
+		for index, v := range v_map {
+			value, ok := request_map.Get(index)
+			if !ok {
+				keys := make([]string)
+				value = Request{v, keys, 0, nil}
+				requests_map.PushBack(value)
+
+			}
+			value.Body.append(i)
 		}
-		value.body.append(i)
+
+
 	}
 
 	for el = requests_map.Front(); el != nil; el = el.Next() {
-		value
+		el.Value.(Request).Time = time.Now()
+		go get_full_job_goroutine(el.Value.(Request)
+	}
+
+
+	select {
+	case job_full <- Job_full_channel: // type: Request
+		requests_map.Remove(job_full.Server.Id)
+		for i, v := range job_full.Body.(map[string]map[string]interface{}) {
+			value, ok := keys_x_values[i]
+			if !ok {
+				keys_x_values[i] = v
+			} else {
+				for index, value2 := range v {
+					keys_x_values[i][index] = value2
+				}
+			}
+
+		}
+
+	//case time.After():
+		// TODO Check for a time bound and retry,  
 	}
 
 	keys := make([]string)

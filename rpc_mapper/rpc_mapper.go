@@ -12,9 +12,10 @@ var (
 )
 
 type Request struct {
-	tries int
-	time time.Time
-	body interface{}
+	Server *Server
+	Tries int
+	Time time.Time
+	Body interface{}
 }
 
 // create a type to get an interface
