@@ -198,6 +198,51 @@ func send_completed_job_goroutine(job_ptr *Job) {
 
 }
 
+func send_job_full_goroutine(server *Server, load *Request) {
+
+	// TODO probably it is needed to use the already connection which is in place for the heartbeat
+
+	// connect to server via rpc tcp
+	client, err := rpc.Dial("tcp", server.Ip + ":" + server.Port)
+	defer client.Close()
+	if err != nil {
+		ErrorLoggerPtr.Fatal(err)
+	}
+
+	var reply int
+
+	err = client.Call("Reducer_handler.Send_job_full", load, &reply)
+	if err != nil {
+		ErrorLoggerPtr.Fatal(err)
+	}
+	InfoLoggerPtr.Println("Job full sent to the reducer.")
+
+}
+
+func prepare_and_send_job_full_goroutine(request_ptr *Request, jobs_hashmap map[string]*Jobs) {
+
+	keys_x_values := map[string]interface{}
+
+	for i, v := range jobs_hashmap {
+		for index, key := range request_ptr.keys {
+			if res, ok := v.keys_x_values[key]; ok {
+				value, ok2 := keys_x_values[i]
+				if !ok2 {
+					keys_x_values[key] = res
+				} else {
+					for index2, value3 := range v {
+						keys_x_values[key][index2] = value3
+					}
+				}
+			}
+		}
+	}
+
+	req := &Request{kays_x_values, server}
+
+	go send_job_full_goroutine(request.Server, req)
+}
+
 func task_manager_goroutine() {
 
 	state := IDLE
@@ -276,6 +321,10 @@ func task_manager_goroutine() {
 					state = BUSY
 				} else { ErrorLoggerPtr.Fatal("Unexpected empty task hashmap.") }
 			}
+		case request_ptr <- Job_full_request_channel:
+			jobs_hashmap, ok := task_finished_hashmap.Get(request_ptr.Body.Task)
+			if !ok { ErrorLoggerPtr.Fatal("Missing task") }
+			go prepare_and_send_job_full_goroutine(request_ptr, jobs_hashmap)
 		case <-time.After(10 * SECOND):
 			if task_finished_hashmap.Front() != nil {
 				if next_check_task == "" { next_check_task = task_finished_hashmap.Front().Key }
@@ -331,7 +380,7 @@ func init() {
 		ErrorLoggerPtr.Fatal("Empty ID.", err)
 	}
 
-	server = &Server{id, ip, MAPPER_PORT, time.Now(), nil, "MAPPER"}
+	server = &Server{id, ip, REDUCER_PORT, time.Now(), nil, "REDUCER"}
 }
 
 func Mapper_main() {

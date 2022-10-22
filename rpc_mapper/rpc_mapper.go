@@ -26,3 +26,7 @@ func (h Mapper_handler) Send_job(args *Job, reply *int) error {
 	return nil
 }
 
+func (h Mapper_handler) Get_job_full(args *Request, reply *int) error {
+	Job_full_request_channel <- args
+	return nil
+}

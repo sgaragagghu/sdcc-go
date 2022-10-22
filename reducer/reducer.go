@@ -104,7 +104,7 @@ func get_job_full_goroutine(request *Request) {
 
 	var reply int
 
-	err = client.Call("Mapper_handler.Get_job_full", request, &reply)
+	err = client.Call("Mapper_handler.Get_job_full", &request, &reply)
 	if err != nil {
 		ErrorLoggerPtr.Fatal(err)
 	}
