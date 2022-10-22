@@ -46,74 +46,70 @@ func heartbeat_goroutine(client *rpc.Client) {
 
 }
 
-func reducer_algorithm_clustering(properties_amount int, keys []string, separate_entries byte, separate_properties byte, parameters []interface{}, load []byte) (map[string]interface{}) {
+func reducer_algorithm_clustering(properties_amount int, keys []string, keys_x_values map[string]man[string]interface{},
+		separate_properties byte, parameters []interface{}) (map[string]interface{}) {
 
 	res := make(map[string]interface{})
 
 	k := parameters[0].(int)
-
+/*
 	u_vec := make([][]float64, k)
+
 	for i := range u_vec {
 		//u_vec[i] = make([]int, properties_amount)
 		u_vec[i] = parameters[i + 1].([]float64)
 	}
+*/
 
-	reader := bytes.NewReader(load)
-	buffered_read := bufio.NewReader(reader)
-
-	for {
-		j := 1
-		s := ""
-		full_s := ""
-		point := make([]float64, properties_amount)
-		var err error = nil
-		var char byte = 0
-		for char, err = buffered_read.ReadByte(); err == nil; char, err = buffered_read.ReadByte() {
-			//InfoLoggerPtr.Println(string(char))
-			if char == separate_properties {
-				if j < (properties_amount)  {
-					point[j - 1], _ = strconv.ParseFloat(s, 64) //TODO check the error
-					full_s = s
-					s = ""
-					j += 1
-				} else { ErrorLoggerPtr.Fatal("Parsing failed") }
-			} else if char == separate_entries {
-				if j == (properties_amount) {
-					point[j - 1], _ = strconv.ParseFloat(s, 64) // TODO check the error
-					full_s += string(separate_properties) + s
-					break
-				} else { ErrorLoggerPtr.Fatal("Parsing failed") }
-			} else {
-				s += string(char) // TODO Try to use a buffer like bytes.NewBufferString(ret) for better performances
+	for index, value := range keys_x_values {
+		var mean := make([]float64, properties_amount)
+		var n_samples float64 = 1
+		for string_point, _ := range value {
+				reader := bytes.NewReader([]byte(string_point))
+				buffered_read := bufio.NewReader(reader)
+				point := make([]float64, properties_amount)
+				j := 1
+				s := ""
+			for char, err = buffered_read.ReadByte(); err == nil; char, err = buffered_read.ReadByte() {
+				//InfoLoggerPtr.Println(string(char))
+				if char == separate_entries {
+					if j =< properties_amount {
+						point[j - 1], _ = strconv.ParseFloat(s, 64) // TODO check the error
+						//full_s += string(separate_properties) + s
+						s = ""
+						break
+					} else { ErrorLoggerPtr.Fatal("Parsing failed") }
+				} else {
+					s += string(char) // TODO Try to use a buffer like bytes.NewBufferString(ret) for better performances
+				}
 			}
+			mean = welford_one_pass(mean, point, n_samples)
 		}
-		min_index := 0
-		var min float64 = -1
-		for i := k - 1 ; i >= 0; i -= 1 {
-			if distance := Euclidean_distance(properties_amount, u_vec[i], point); distance < min || min == -1 {
-				min_index = i
-				min = distance
-			}
-		}
-		if err != nil {
-			if err == io.EOF {
-				break
-			} else {
-				ErrorLoggerPtr.Fatal(err)
-			}
-		}
-		min_index_s := strconv.Itoa(min_index)
-		if m, ok := res[min_index_s]; ok {
-			m.(map[string]struct{})[full_s] = struct{}{}
-		} else {
-			keys.append(min_index_s)
-			m = make(map[string]struct{})
-			m.(map[string]struct{})[full_s] = struct{}{}
-			res[min_index_s] = m
-		}
-		//InfoLoggerPtr.Println("Element", full_s, "added to", min_index_s)
+		res[index] = mean
 	}
 	return res
+}
+
+
+func get_job_full_goroutine(request *Request) {
+
+	// TODO probably it is needed to use the already connection which is in place for the heartbeat
+
+	// connect to server via rpc tcp
+	client, err := rpc.Dial("tcp", request.Server.Ip + ":" + request.Server.Port)
+	defer client.Close()
+	if err != nil {
+		ErrorLoggerPtr.Fatal(err)
+	}
+
+	var reply int
+
+	err = client.Call("Mapper_handler.Get_job_full", request, &reply)
+	if err != nil {
+		ErrorLoggerPtr.Fatal(err)
+	}
+	InfoLoggerPtr.Println("Requested keys", request.Keys, "from server", request.Server.Id)
+
 }
 
 func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
@@ -165,7 +161,7 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 
 	// TODO check the error
 	res, err := Call("reducer_algorithm_" + job_ptr.Reduce_algorithm, stub_storage, int(job_ptr.Properties_amount), keys,
-		job_ptr.Separate_entries, job_ptr.Separate_properties, job_ptr.Reduce_algorithm_parameters, (*load_ptr)[actual_begin:actual_end])
+		keys_x_values, job_ptr.Separate_properties, job_ptr.Reduce_algorithm_parameters)
 	if err != nil { ErrorLoggerPtr.Fatal("Error calling reducer_algorithm:", err) }
 	job_ptr.Result = res.(map[string]interface {})
 	job_ptr.Keys = keys

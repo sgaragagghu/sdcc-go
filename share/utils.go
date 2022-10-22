@@ -13,6 +13,15 @@ import (
 
 type StubMapping map[string]interface{}
 
+func welford_one_pass(mean []float64, sample []float64, float64 nsamples) ([]float64) {
+	if(nsamples > 0) {
+		for i, _ := range mean {
+			mean[i] = mean[i] + (sample[i] - mean[i]) / (long double)(nsamples)
+		}
+	}
+	return mean
+}
+
 func Euclidean_distance(i int, a []float64, b []float64) (float64) {
 	var squared_sum float64 = 0
 	for i -= 1; i >= 0; i -= 1 {
