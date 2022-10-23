@@ -13,10 +13,10 @@ import (
 
 type StubMapping map[string]interface{}
 
-func welford_one_pass(mean []float64, sample []float64, float64 nsamples) ([]float64) {
+func welford_one_pass(mean []float64, sample []float64, nsamples float64) ([]float64) {
 	if(nsamples > 0) {
 		for i, _ := range mean {
-			mean[i] = mean[i] + (sample[i] - mean[i]) / (long double)(nsamples)
+			mean[i] = mean[i] + (sample[i] - mean[i]) / nsamples
 		}
 	}
 	return mean
@@ -43,6 +43,7 @@ func GetOutboundIP() net.IP {
     return localAddr.IP
 }
 
+// TODO check generics
 func MinOf_int32(vars ...int32) int32 {
     min := vars[0]
 

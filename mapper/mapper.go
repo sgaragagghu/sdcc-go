@@ -20,6 +20,8 @@ import (
 	"io"
 	"math"
 	"errors"
+
+	"github.com/elliotchance/orderedmap"
 )
 
 var (
@@ -139,7 +141,7 @@ func mapper_algorithm_clustering(properties_amount int, keys []string, separate_
 		if m, ok := res[min_index_s]; ok {
 			m.(map[string]struct{})[full_s] = struct{}{}
 		} else {
-			keys.append(min_index_s)
+			keys = append(keys, min_index_s)
 			m = make(map[string]struct{})
 			m.(map[string]struct{})[full_s] = struct{}{}
 			res[min_index_s] = m
@@ -162,14 +164,14 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 
 	//InfoLoggerPtr.Println("Actual begin:", actual_begin, "actual end:", actual_end)
 
-	keys := make([]string)
+	keys := make([]string, 1)
 
 	// TODO check the error
 	res, err := Call("mapper_algorithm_" + job_ptr.Map_algorithm, stub_storage, int(job_ptr.Properties_amount), keys,
 		job_ptr.Separate_entries, job_ptr.Separate_properties, job_ptr.Map_algorithm_parameters, (*load_ptr)[actual_begin:actual_end])
 	if err != nil { ErrorLoggerPtr.Fatal("Error calling mapper_algorithm:", err) }
-	job_ptr.Result = res.(map[string]interface {})
-	job_ptr.Keys = keys
+	job_ptr.Map_result = res.(map[string]interface {})
+	job_ptr.Map_keys = keys
 	select {
 	case *chan_ptr <- job_ptr:
 	default:
@@ -219,18 +221,18 @@ func send_job_full_goroutine(server *Server, load *Request) {
 
 }
 
-func prepare_and_send_job_full_goroutine(request_ptr *Request, jobs_hashmap map[string]*Jobs) {
+func prepare_and_send_job_full_goroutine(request_ptr *Request, jobs_hashmap map[string]*Job) {
 
-	keys_x_values := map[string]interface{}
+	keys_x_values := make(map[string]map[string]*Server)
 
 	for i, v := range jobs_hashmap {
-		for index, key := range request_ptr.keys {
-			if res, ok := v.keys_x_values[key]; ok {
+		for index, key := range request_ptr.Body.([]string) {
+			if res, ok := v.Keys_x_servers[key]; ok {
 				value, ok2 := keys_x_values[i]
 				if !ok2 {
 					keys_x_values[key] = res
 				} else {
-					for index2, value3 := range v {
+					for index2, value3 := range value {
 						keys_x_values[key][index2] = value3
 					}
 				}
@@ -238,9 +240,9 @@ func prepare_and_send_job_full_goroutine(request_ptr *Request, jobs_hashmap map[
 		}
 	}
 
-	req := &Request{kays_x_values, server}
+	req := &Request{server, 0, time.Now(), keys_x_values}
 
-	go send_job_full_goroutine(request.Server, req)
+	go send_job_full_goroutine(req.Server, req)
 }
 
 func task_manager_goroutine() {
@@ -255,7 +257,7 @@ func task_manager_goroutine() {
 
 	for {
 		select {
-		case job_ptr := <-*Job_channel_ptr:
+		case job_ptr := <-Job_channel:
 			InfoLoggerPtr.Println("Received Task", job_ptr.Task_id, "job", job_ptr.Id)
 
 			{
@@ -284,8 +286,8 @@ func task_manager_goroutine() {
 
 			{
 				job_map, ok := task_finished_hashmap.Get(job_finished_ptr.Task_id)
-				if !ok { task_finished_hashmap.Set(job_finished_ptr.Task_id, make(map[string])) }
-				job_map[job_finished_ptr.Id] = job_finished_ptr
+				if !ok { task_finished_hashmap.Set(job_finished_ptr.Task_id, make(map[string]*Job)) }
+				job_map.(map[string]*Job)[job_finished_ptr.Id] = job_finished_ptr
 			}
 
 			if len(task_hashmap) > 0 {
@@ -328,8 +330,8 @@ func task_manager_goroutine() {
 		case <-time.After(10 * SECOND):
 			if task_finished_hashmap.Front() != nil {
 				if next_check_task == "" { next_check_task = task_finished_hashmap.Front().Key }
-				if el := task_finished_hashmap.GetValue(next_check_task); el != n; {
-					job_map_ptr := el.Value.(map[string])
+				if el := task_finished_hashmap.GetValue(next_check_task); el != n {
+					job_map_ptr := el.Value.(map[string]*Jobs)
 					checking_task := next_check_task
 					if el = el.Next(); el != nil {
 						next_check_task = el.Key

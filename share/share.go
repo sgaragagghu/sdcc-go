@@ -35,6 +35,15 @@ var (
 	ErrorLoggerPtr		*log.Logger
 )
 
+type Server struct {
+	Id string
+	Ip string
+	Port string
+	Last_heartbeat time.Time
+	Jobs map[string]*Job
+	Role string
+}
+
 type Job struct {
 	Id string
 	Task_id string
@@ -50,12 +59,12 @@ type Job struct {
 	Map_algorithm_parameters interface{}
 	Map_result map[string]interface{}
 	Map_keys []string
-	Reducers_amount int
+	Reducers_amount int32
 	Reduce_algorithm string
 	Reduce_algorithm_parameters interface{}
 	Reduce_result map[string]interface{}
 	Reduce_keys []string
-	keys_x_servers map[string]map[string]struct{}
+	Keys_x_servers map[string]map[string]*Server
 	Delete bool
 }
 

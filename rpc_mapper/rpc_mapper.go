@@ -1,14 +1,17 @@
 package rpc_mapper
 
 import (
-//	. "../share"
+	. "../share"
+	"time"
+//	. "../rpc_master"
 //	"container/list"
 )
 
 const MAPPER_PORT = "6668"
 
 var (
-	Job_mapper_channel chan *Job
+	Job_channel chan *Job
+	Job_full_request_channel chan *Request
 )
 
 type Request struct {
@@ -22,7 +25,7 @@ type Request struct {
 type Mapper_handler int
 
 func (h Mapper_handler) Send_job(args *Job, reply *int) error {
-	Job_mapper_channel <- args
+	Job_channel <- args
 	return nil
 }
 
