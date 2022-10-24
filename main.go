@@ -3,6 +3,7 @@ package main
 import (
 	. "./master"
 	. "./mapper"
+	. "./reducer"
 	. "./share"
 	"os"
 	"time"
@@ -24,6 +25,7 @@ func main() {
 			goto exit
 		case REDUCER:
 			InfoLoggerPtr.Println("Starting reducer...")
+			Reducer_main()
 			goto exit
 		default:
 			WarningLoggerPtr.Println("SDCC_ROLE env is not set correctly.")

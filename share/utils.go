@@ -13,7 +13,7 @@ import (
 
 type StubMapping map[string]interface{}
 
-func welford_one_pass(mean []float64, sample []float64, nsamples float64) ([]float64) {
+func Welford_one_pass(mean []float64, sample []float64, nsamples float64) ([]float64) {
 	if(nsamples > 0) {
 		for i, _ := range mean {
 			mean[i] = mean[i] + (sample[i] - mean[i]) / nsamples

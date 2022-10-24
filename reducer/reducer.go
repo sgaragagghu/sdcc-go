@@ -4,6 +4,7 @@ import (
 	. "../share"
 	. "../rpc_reducer"
 	. "../rpc_master"
+	. "../rpc_mapper"
 	"fmt"
 	"os"
 	"io/ioutil"
@@ -17,9 +18,12 @@ import (
 	"container/list"
 	"bytes"
 	"bufio"
-	"io"
-	"math"
-	"errors"
+//	"io"
+//	"math"
+//	"errors"
+
+
+	"github.com/elliotchance/orderedmap"
 )
 
 var (
@@ -46,13 +50,13 @@ func heartbeat_goroutine(client *rpc.Client) {
 
 }
 
-func reducer_algorithm_clustering(properties_amount int, keys []string, keys_x_values map[string]man[string]interface{},
+func reducer_algorithm_clustering(properties_amount int, keys []string, keys_x_values map[string]map[string]interface{},
 		separate_properties byte, parameters []interface{}) (map[string]interface{}) {
 
 	res := make(map[string]interface{})
-
-	k := parameters[0].(int)
 /*
+	k := parameters[0].(int)
+
 	u_vec := make([][]float64, k)
 
 	for i := range u_vec {
@@ -62,7 +66,7 @@ func reducer_algorithm_clustering(properties_amount int, keys []string, keys_x_v
 */
 
 	for index, value := range keys_x_values {
-		var mean := make([]float64, properties_amount)
+		mean := make([]float64, properties_amount)
 		var n_samples float64 = 1
 		for string_point, _ := range value {
 				reader := bytes.NewReader([]byte(string_point))
@@ -70,10 +74,10 @@ func reducer_algorithm_clustering(properties_amount int, keys []string, keys_x_v
 				point := make([]float64, properties_amount)
 				j := 1
 				s := ""
-			for char, err = buffered_read.ReadByte(); err == nil; char, err = buffered_read.ReadByte() {
+			for char, err := buffered_read.ReadByte(); err == nil; char, err = buffered_read.ReadByte() {
 				//InfoLoggerPtr.Println(string(char))
-				if char == separate_entries {
-					if j =< properties_amount {
+				if char == separate_properties {
+					if j <= properties_amount {
 						point[j - 1], _ = strconv.ParseFloat(s, 64) // TODO check the error
 						//full_s += string(separate_properties) + s
 						s = ""
@@ -83,7 +87,7 @@ func reducer_algorithm_clustering(properties_amount int, keys []string, keys_x_v
 					s += string(char) // TODO Try to use a buffer like bytes.NewBufferString(ret) for better performances
 				}
 			}
-			mean = welford_one_pass(mean, point, n_samples)
+			mean = Welford_one_pass(mean, point, n_samples)
 		}
 		res[index] = mean
 	}
@@ -108,41 +112,41 @@ func get_job_full_goroutine(request *Request) {
 	if err != nil {
 		ErrorLoggerPtr.Fatal(err)
 	}
-	InfoLoggerPtr.Println("Requested keys", request.Keys, "from server", request.Server.Id)
+	InfoLoggerPtr.Println("Requested keys", request.Body, "from server", request.Server.Id)
 
 }
 
 func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 
-	requests_map := NewOrdereMap()
-	keys_x_values := map[string]interface{}
+	requests_map := orderedmap.NewOrderedMap()
+	keys_x_values := make(map[string]map[string]interface{})
 
-	for i, v_map := keys_x_servers {
+	for i, v_map := range job_ptr.Keys_x_servers {
 		for index, v := range v_map {
-			value, ok := request_map.Get(index)
+			value_ptr, ok := requests_map.Get(index)
 			if !ok {
-				keys := make([]string)
-				value = Request{v, keys, 0, nil}
-				requests_map.PushBack(value)
+				keys := make([]string, 1)
+				value_ptr = &Request{v, 0, time.Now(), keys}
+				requests_map.Set(index, value_ptr)
 
 			}
-			value.Body.append(i)
+			value_ptr.(*Request).Body = append(value_ptr.(*Request).Body.([]string), i)
 		}
 
 
 	}
 
-	for el = requests_map.Front(); el != nil; el = el.Next() {
-		el.Value.(Request).Time = time.Now()
-		go get_full_job_goroutine(el.Value.(Request)
+	for el := requests_map.Front(); el != nil; el = el.Next() {
+		el.Value.(*Request).Time = time.Now()
+		go get_job_full_goroutine(el.Value.(*Request))
 	}
 
 
 	select {
-	case job_full <- Job_full_channel: // type: Request
-		requests_map.Remove(job_full.Server.Id)
+		case job_full := <-Job_full_channel: // type: Request
+		requests_map.Delete(job_full.Server.Id)
 		for i, v := range job_full.Body.(map[string]map[string]interface{}) {
-			value, ok := keys_x_values[i]
+			_, ok := keys_x_values[i]
 			if !ok {
 				keys_x_values[i] = v
 			} else {
@@ -157,14 +161,14 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 		// TODO Check for a time bound and retry,  
 	}
 
-	keys := make([]string)
+	keys := make([]string, 1)
 
 	// TODO check the error
 	res, err := Call("reducer_algorithm_" + job_ptr.Reduce_algorithm, stub_storage, int(job_ptr.Properties_amount), keys,
 		keys_x_values, job_ptr.Separate_properties, job_ptr.Reduce_algorithm_parameters)
 	if err != nil { ErrorLoggerPtr.Fatal("Error calling reducer_algorithm:", err) }
-	job_ptr.Result = res.(map[string]interface {})
-	job_ptr.Keys = keys
+	job_ptr.Reduce_result = res.(map[string]interface {})
+	job_ptr.Reduce_keys = keys
 	select {
 	case *chan_ptr <- job_ptr:
 	default:
@@ -205,7 +209,7 @@ func task_manager_goroutine() {
 
 	for {
 		select {
-		case job_ptr := <-*Job_channel_ptr:
+		case job_ptr := <-Job_channel:
 			InfoLoggerPtr.Println("Received Task", job_ptr.Task_id, "job", job_ptr.Id)
 
 			{
@@ -234,8 +238,8 @@ func task_manager_goroutine() {
 
 			{
 				job_map, ok := task_finished_hashmap.Get(job_finished_ptr.Task_id)
-				if !ok { task_finished_hashmap.Set(job_finished_ptr.Task_id, make(map[string])) }
-				job_map[job_finished_ptr.Id] = job_finished_ptr
+				if !ok { task_finished_hashmap.Set(job_finished_ptr.Task_id, make(map[string]*Job)) }
+				job_map.(map[string]*Job)[job_finished_ptr.Id] = job_finished_ptr
 			}
 
 			if len(task_hashmap) > 0 {
@@ -248,7 +252,7 @@ func task_manager_goroutine() {
 
 
 			job_light := *job_finished_ptr
-			job_light.Result = nil
+			//job_light.Result = nil
 			go send_completed_job_goroutine(&job_light) // TODO add and manage errors
 
 			state = IDLE
@@ -273,21 +277,21 @@ func task_manager_goroutine() {
 			}
 		case <-time.After(10 * SECOND):
 			if task_finished_hashmap.Front() != nil {
-				if next_check_task == "" { next_check_task = task_finished_hashmap.Front().Key }
-				if el := task_finished_hashmap.GetValue(next_check_task); el != n; {
-					job_map_ptr := el.Value.(map[string])
+				if next_check_task == "" { next_check_task = task_finished_hashmap.Front().Key.(string) }
+				if el := task_finished_hashmap.GetElement(next_check_task); el != nil {
+					job_map_ptr := el.Value.(map[string]*Job)
 					checking_task := next_check_task
 					if el = el.Next(); el != nil {
-						next_check_task = el.Key
+						next_check_task = el.Key.(string)
 					} else if el = task_finished_hashmap.Front(); el != nil {
-						next_check_task = el.Key
+						next_check_task = el.Key.(string)
 					} else {
 						next_check_task = ""
 					}
 					for key, value := range job_map_ptr {
 						if value.Delete { delete(job_map_ptr, key) }
 					}
-					if len(job_map_ptr) == 0 { task_finished_hashmap.Remove(checking_task) }
+					if len(job_map_ptr) == 0 { task_finished_hashmap.Delete(checking_task) }
 				} else { ErrorLoggerPtr.Fatal("Task is missing") }
 			}
 		}
@@ -340,8 +344,7 @@ func Reducer_main() {
 
 	// creating channel for communicating the task
 	// to the goroutine task manager
-	job_channel := make(chan *Job, 1000)
-	Job_channel_ptr = &job_channel
+	Job_channel = make(chan *Job, 1000)
 
 	//go task_goroutine()
 
