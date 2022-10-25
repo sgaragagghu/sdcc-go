@@ -192,7 +192,7 @@ func send_completed_job_goroutine(job_ptr *Job) {
 
 	var reply int
 
-	err = client.Call("Mapper_handler.Job_mapper_completed", job_ptr, &reply)
+	err = client.Call("Master_handler.Job_mapper_completed", job_ptr, &reply)
 	if err != nil {
 		ErrorLoggerPtr.Fatal(err)
 	}
@@ -286,7 +286,10 @@ func task_manager_goroutine() {
 
 			{
 				job_map, ok := task_finished_hashmap.Get(job_finished_ptr.Task_id)
-				if !ok { task_finished_hashmap.Set(job_finished_ptr.Task_id, make(map[string]*Job)) }
+				if !ok {
+					job_map = make(map[string]*Job)
+					task_finished_hashmap.Set(job_finished_ptr.Task_id, job_map)
+				}
 				job_map.(map[string]*Job)[job_finished_ptr.Id] = job_finished_ptr
 			}
 
