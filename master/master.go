@@ -120,11 +120,19 @@ func heartbeat_goroutine() {
 				}
 			} else {
 				server_temp_ptr = heartbeat_ptr
-				select {
-				case add_mapper_channel <-server_temp_ptr:
-				default:
-					ErrorLoggerPtr.Fatal("Add_mapper_channel is full")
-				}
+				if server_temp_ptr.Role == MAPPER {
+					select {
+					case add_mapper_channel <-server_temp_ptr:
+					default:
+						ErrorLoggerPtr.Fatal("Add_mapper_channel is full")
+					}
+				} else if server_temp_ptr.Role == REDUCER {
+					select {
+					case add_reducer_channel <-server_temp_ptr:
+					default:
+						ErrorLoggerPtr.Fatal("Add_reducer_channel is full")
+					}
+				} else { ErrorLoggerPtr.Fatal("Unexpected kinf of role:", server_temp_ptr.Role) }
 			}
 			linked_hashmap.Set(server_temp_ptr.Id, server_temp_ptr) // TODO is it efficient ? 
 			//InfoLoggerPtr.Println("Received heartbeat from mapper:", server_temp_ptr.Id)
@@ -228,13 +236,7 @@ func scheduler_mapper_goroutine() {
 				if len(working_mapper_hashmap) == 0 {
 					InfoLoggerPtr.Println("Task", job_completed_ptr.Id, "completed")
 					state = IDLE
-				}
-				if state == IDLE && len(Task_mapper_channel) > 0 { // if the curent task finished and theres a task
-					select {
-					case New_task_mapper_event_channel <-struct{}{}:
-					default:
-						ErrorLoggerPtr.Fatal("New_task_mapper_event_channel full.")
-					}
+
 					task_id_int, _ := strconv.ParseInt(job_completed_ptr.Task_id, 10, 32) // TODO check error
 					red_task := task{int32(task_id_int), "", 0, 0, job_completed_ptr.Separate_entries,
 						job_completed_ptr.Separate_properties, job_completed_ptr.Properties_amount, "", nil,
@@ -251,6 +253,13 @@ func scheduler_mapper_goroutine() {
 						ErrorLoggerPtr.Fatal("Task reduce channel is full")
 					}
 
+				}
+				if state == IDLE && len(Task_mapper_channel) > 0 { // if the curent task finished and theres a task
+					select {
+					case New_task_mapper_event_channel <-struct{}{}:
+					default:
+						ErrorLoggerPtr.Fatal("New_task_mapper_event_channel full.")
+					}
 					keys_x_servers = orderedmap.NewOrderedMap()
 				}
 			}
@@ -270,10 +279,10 @@ func scheduler_mapper_goroutine() {
 					{
 						var i int32 = 0
 						for ; i < mappers_amount; i += 1 {
-						begin := int64(i) * slice_size
-						end := (int64(i) + 1) * slice_size
-						if i == 0 { begin = 0 }
-						if i == mappers_amount { end = resource_size }
+							begin := int64(i) * slice_size
+							end := (int64(i) + 1) * slice_size
+							if i == 0 { begin = 0 }
+							if i == mappers_amount { end = resource_size }
 							jobs[i] = &Job{strconv.FormatInt(int64(i), 10), strconv.FormatInt(int64(task_ptr.id), 10),
 								"", task_ptr.resource_link, begin, end, task_ptr.margin,
 								task_ptr.separate_entries, task_ptr.separate_properties, task_ptr.properties_amount,
@@ -282,8 +291,9 @@ func scheduler_mapper_goroutine() {
 						}
 					}
 					if len(idle_mapper_hashmap) > 0 {
-						i := 0
+						var i int32 = 0
 						for _, server_ptr := range idle_mapper_hashmap {
+							if i >= mappers_amount { break }
 							jobs[i].Server_id = server_ptr.Id
 							working_mapper_hashmap[server_ptr.Id] = server_ptr
 							server_ptr.Jobs[jobs[i].Id] = jobs[i]
@@ -342,7 +352,7 @@ func scheduler_reducer_goroutine() {
 			delete(working_reducer_hashmap, rem_reducer_ptr.Id)
 			}
 		case add_reducer_ptr := <-add_reducer_channel:
-			InfoLoggerPtr.Println("Reducer", add_reducer_ptr.Id, "is being added")
+			InfoLoggerPtr.Println("Reducer", add_reducer_ptr.Id, "ip", add_reducer_ptr.Ip, "port", add_reducer_ptr.Port, "is being added")
 			reducer_job_map := make(map[string]*Job)
 			add_reducer_ptr.Jobs = reducer_job_map
 			select {
@@ -390,6 +400,7 @@ func scheduler_reducer_goroutine() {
 					keys_amount := int32(task_ptr.keys_x_servers.Len()) // TODO check overflow
 					reducers_amount := MinOf_int32(task_ptr.reducers_amount, int32(len(idle_reducer_hashmap))) // TODO check overflow
 					slice_size := 1
+					if reducers_amount == 0 { reducers_amount = 1 }
 					var slice_rest int32 = 0
 					if keys_amount > reducers_amount {
 						slice_size = int(math.Abs(float64(keys_amount) / float64(reducers_amount))) // TODO check overflow
@@ -484,6 +495,8 @@ func Master_main() {
 	//creating channel for communicating new task
 	Task_reducer_channel = make(chan *task, 1000)
 
+
+	go scheduler_reducer_goroutine()
 	go scheduler_mapper_goroutine()
 	go heartbeat_goroutine()
 	go task_injector_goroutine()
