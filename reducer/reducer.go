@@ -108,12 +108,12 @@ func get_job_full_goroutine(request *Request) {
 
 	var reply int
 
+
+	InfoLoggerPtr.Println("Requesting keys", request.Body, "from server", request.Server.Id)
 	err = client.Call("Mapper_handler.Get_job_full", &request, &reply)
 	if err != nil {
 		ErrorLoggerPtr.Fatal(err)
 	}
-	InfoLoggerPtr.Println("Requested keys", request.Body, "from server", request.Server.Id)
-
 }
 
 func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
@@ -209,7 +209,7 @@ func task_manager_goroutine() {
 
 	for {
 		select {
-		case job_ptr := <-Job_channel:
+		case job_ptr := <-Job_reducer_channel:
 			InfoLoggerPtr.Println("Received Task", job_ptr.Task_id, "job", job_ptr.Id)
 
 			{
@@ -344,7 +344,7 @@ func Reducer_main() {
 
 	// creating channel for communicating the task
 	// to the goroutine task manager
-	Job_channel = make(chan *Job, 1000)
+	Job_reducer_channel = make(chan *Job, 1000)
 
 	//go task_goroutine()
 
