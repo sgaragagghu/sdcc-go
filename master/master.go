@@ -186,7 +186,7 @@ func scheduler_mapper_goroutine() {
 			delete(working_mapper_hashmap, rem_mapper_ptr.Id)
 			}
 		case add_mapper_ptr := <-add_mapper_channel:
-			InfoLoggerPtr.Println("Mapper", add_mapper_ptr.Id, "is being added")
+			InfoLoggerPtr.Println("Mapper", add_mapper_ptr.Id, "ip", add_mapper_ptr.Ip, "port", add_mapper_ptr.Port, "is being added")
 			mapper_job_map := make(map[string]*Job)
 			add_mapper_ptr.Jobs = mapper_job_map
 			select {

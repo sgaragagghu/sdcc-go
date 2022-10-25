@@ -3,7 +3,6 @@ package mapper
 import (
 	. "../share"
 	. "../rpc_mapper"
-	. "../rpc_reducer"
 	. "../rpc_master"
 	"fmt"
 	"os"
