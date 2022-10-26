@@ -100,7 +100,7 @@ func get_job_full_goroutine(request *Request) {
 	// TODO probably it is needed to use the already connection which is in place for the heartbeat
 
 	// connect to server via rpc tcp
-	client, err := rpc.Dial("tcp", request.Server.Ip + ":" + request.Server.Port)
+	client, err := rpc.Dial("tcp", request.Receiver.Ip + ":" + request.Receiver.Port)
 	defer client.Close()
 	if err != nil {
 		ErrorLoggerPtr.Fatal(err)
@@ -109,7 +109,7 @@ func get_job_full_goroutine(request *Request) {
 	var reply int
 
 
-	InfoLoggerPtr.Println("Requesting keys", request.Body, "from server", request.Server.Id)
+	InfoLoggerPtr.Println("Requesting keys", request.Body, "from server", request.Receiver.Id)
 	err = client.Call("Mapper_handler.Get_job_full", &request, &reply)
 	if err != nil {
 		ErrorLoggerPtr.Fatal(err)
@@ -127,7 +127,7 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 			if !ok {
 				keys := make([]string, 1)
 				keys[0] = job_ptr.Task_id
-				value_ptr = &Request{v, 0, time.Now(), keys}
+				value_ptr = &Request{server, v,0, time.Now(), keys}
 				requests_map.Set(index, value_ptr)
 
 			}
@@ -145,7 +145,7 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 
 	select {
 		case job_full := <-Job_full_channel: // type: Request
-		requests_map.Delete(job_full.Server.Id)
+		requests_map.Delete(job_full.Sender.Id)
 		for i, v := range job_full.Body.(map[string]map[string]interface{}) {
 			_, ok := keys_x_values[i]
 			if !ok {

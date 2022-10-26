@@ -240,9 +240,9 @@ func prepare_and_send_job_full_goroutine(request_ptr *Request, jobs_hashmap map[
 		}
 	}
 
-	req := &Request{server, 0, time.Now(), keys_x_values}
+	req := &Request{server, request_ptr.Sender, 0, time.Now(), keys_x_values}
 
-	go send_job_full_goroutine(request_ptr.Server, req)
+	go send_job_full_goroutine(req.Receiver, req)
 }
 
 func task_manager_goroutine() {

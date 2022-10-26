@@ -15,7 +15,8 @@ var (
 )
 
 type Request struct {
-	Server *Server
+	Sender *Server
+	Receiver *Server
 	Tries int
 	Time time.Time
 	Body interface{}
