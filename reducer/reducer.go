@@ -126,6 +126,7 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 			value_ptr, ok := requests_map.Get(index)
 			if !ok {
 				keys := make([]string, 1)
+				keys[0] = job_ptr.Task_id
 				value_ptr = &Request{v, 0, time.Now(), keys}
 				requests_map.Set(index, value_ptr)
 
