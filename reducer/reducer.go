@@ -127,10 +127,11 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 			if !ok {
 				keys := make([]string, 1)
 				keys[0] = job_ptr.Task_id
-				value_ptr = &Request{server, v,0, time.Now(), keys}
+				value_ptr = &Request{server, v, 0, time.Now(), keys}
 				requests_map.Set(index, value_ptr)
 
 			}
+			InfoLoggerPtr.Println("appending", i)
 			value_ptr.(*Request).Body = append(value_ptr.(*Request).Body.([]string), i)
 		}
 
