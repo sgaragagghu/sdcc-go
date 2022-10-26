@@ -223,17 +223,17 @@ func send_job_full_goroutine(server *Server, load *Request) {
 
 func prepare_and_send_job_full_goroutine(request_ptr *Request, jobs_hashmap map[string]*Job) {
 
-	keys_x_values := make(map[string]map[string]*Server)
+	keys_x_values := make(map[string]interface{})
 
 	for i, v := range jobs_hashmap {
-		for _, key := range request_ptr.Body.([]string) {
-			if res, ok := v.Keys_x_servers[key]; ok {
+		for _, key := range request_ptr.Body.([]string)[1:] {
+			if res, ok := v.Map_result[key]; ok {
 				value, ok2 := keys_x_values[i]
 				if !ok2 {
 					keys_x_values[key] = res
 				} else {
-					for index2, value3 := range value {
-						keys_x_values[key][index2] = value3
+					for index2, value3 := range value.(map[string]interface{}) { // bad, i should pass an JOIN function instead of this for generalization.
+						keys_x_values[key].(map[string]interface{})[index2] = value3
 					}
 				}
 			}
@@ -242,7 +242,7 @@ func prepare_and_send_job_full_goroutine(request_ptr *Request, jobs_hashmap map[
 
 	req := &Request{server, 0, time.Now(), keys_x_values}
 
-	go send_job_full_goroutine(req.Server, req)
+	go send_job_full_goroutine(request_ptr.Server, req)
 }
 
 func task_manager_goroutine() {
@@ -327,7 +327,7 @@ func task_manager_goroutine() {
 				} else { ErrorLoggerPtr.Fatal("Unexpected empty task hashmap.") }
 			}
 		case request_ptr := <-Job_full_request_channel:
-			jobs_hashmap, ok := task_finished_hashmap.Get(request_ptr.Body.(map[string]map[string]*Server))
+			jobs_hashmap, ok := task_finished_hashmap.Get(request_ptr.Body.([]string)[0])
 			if !ok { ErrorLoggerPtr.Fatal("Missing task") }
 			go prepare_and_send_job_full_goroutine(request_ptr, jobs_hashmap.(map[string]*Job))
 		case <-time.After(10 * SECOND):
@@ -355,7 +355,10 @@ func task_manager_goroutine() {
 
 func init() {
 
+	Job_full_request_channel = make(chan *Request, 1000)
+
 	gob.Register([]interface{}(nil))
+	gob.Register(map[string]interface{}(nil))
 
 	stub_storage = map[string]interface{}{
 		"mapper_algorithm_clustering": mapper_algorithm_clustering,
