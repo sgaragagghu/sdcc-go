@@ -303,6 +303,8 @@ func task_manager_goroutine() {
 func init() {
 
 	gob.Register([]interface{}(nil))
+	gob.Register(map[string]interface{}(nil))
+	gob.Register(map[string]struct{}(nil))
 
 	stub_storage = map[string]interface{}{
 		"reducer_algorithm_clustering": reducer_algorithm_clustering,

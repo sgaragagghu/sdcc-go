@@ -81,7 +81,7 @@ func get_actual_end(load_ptr *[]byte, separate_entries byte, offset int64) (int6
 	} else { return offset + i, errors.New("Separate entries not found") }
 }
 
-func mapper_algorithm_clustering(properties_amount int, keys []string, separate_entries byte, separate_properties byte, parameters []interface{}, load []byte) (map[string]interface{}) {
+func mapper_algorithm_clustering(properties_amount int, keys *[]string, separate_entries byte, separate_properties byte, parameters []interface{}, load []byte) (map[string]interface{}) {
 
 	res := make(map[string]interface{})
 
@@ -141,7 +141,7 @@ func mapper_algorithm_clustering(properties_amount int, keys []string, separate_
 		if m, ok := res[min_index_s]; ok {
 			m.(map[string]struct{})[full_s] = struct{}{}
 		} else {
-			keys = append(keys, min_index_s)
+			*keys = append(*keys, min_index_s)
 			m = make(map[string]struct{})
 			m.(map[string]struct{})[full_s] = struct{}{}
 			res[min_index_s] = m
@@ -164,10 +164,10 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 
 	//InfoLoggerPtr.Println("Actual begin:", actual_begin, "actual end:", actual_end)
 
-	keys := make([]string, 1)
+	keys := make([]string, 0)
 
 	// TODO check the error
-	res, err := Call("mapper_algorithm_" + job_ptr.Map_algorithm, stub_storage, int(job_ptr.Properties_amount), keys,
+	res, err := Call("mapper_algorithm_" + job_ptr.Map_algorithm, stub_storage, int(job_ptr.Properties_amount), &keys,
 		job_ptr.Separate_entries, job_ptr.Separate_properties, job_ptr.Map_algorithm_parameters, (*load_ptr)[actual_begin:actual_end])
 	if err != nil { ErrorLoggerPtr.Fatal("Error calling mapper_algorithm:", err) }
 	job_ptr.Map_result = res.(map[string]interface {})
@@ -222,6 +222,8 @@ func send_job_full_goroutine(server *Server, load *Request) {
 }
 
 func prepare_and_send_job_full_goroutine(request_ptr *Request, jobs_hashmap map[string]*Job) {
+
+	InfoLoggerPtr.Println("Preparing keys", request_ptr.Body.([]string)[1:],"full jobs of task", request_ptr.Body.([]string)[0], "for server", request_ptr.Sender.Id)
 
 	keys_x_values := make(map[string]interface{})
 
@@ -359,6 +361,7 @@ func init() {
 
 	gob.Register([]interface{}(nil))
 	gob.Register(map[string]interface{}(nil))
+	gob.Register(map[string]struct{}(nil))
 
 	stub_storage = map[string]interface{}{
 		"mapper_algorithm_clustering": mapper_algorithm_clustering,
