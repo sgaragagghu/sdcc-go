@@ -200,7 +200,7 @@ func send_completed_job_goroutine(job_ptr *Job) {
 
 }
 
-func send_job_full_goroutine(server *Server, load *Request) {
+func send_job_full_goroutine(server *Server, load *Request, log_message string) {
 
 	// TODO probably it is needed to use the already connection which is in place for the heartbeat
 
@@ -217,8 +217,7 @@ func send_job_full_goroutine(server *Server, load *Request) {
 	if err != nil {
 		ErrorLoggerPtr.Fatal(err)
 	}
-	InfoLoggerPtr.Println("Job full sent to the reducer.")
-
+	InfoLoggerPtr.Println(log_message)
 }
 
 func prepare_and_send_job_full_goroutine(request_ptr *Request, jobs_hashmap map[string]*Job) {
@@ -244,7 +243,7 @@ func prepare_and_send_job_full_goroutine(request_ptr *Request, jobs_hashmap map[
 
 	req := &Request{server, request_ptr.Sender, 0, time.Now(), keys_x_values}
 
-	go send_job_full_goroutine(req.Receiver, req)
+	go send_job_full_goroutine(req.Receiver, req, "Sent job full" + request_ptr.Body.([]string)[0] + "to the reducer" + req.Receiver.Id)
 }
 
 func task_manager_goroutine() {
