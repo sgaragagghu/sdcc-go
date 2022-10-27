@@ -50,7 +50,7 @@ func heartbeat_goroutine(client *rpc.Client) {
 
 }
 
-func reducer_algorithm_clustering(properties_amount int, keys []string, keys_x_values map[string]map[string]interface{},
+func reducer_algorithm_clustering(properties_amount int, keys []string, keys_x_values map[string]map[string]struct{},
 		separate_properties byte, parameters []interface{}) (map[string]interface{}) {
 
 	res := make(map[string]interface{})
@@ -119,7 +119,7 @@ func get_job_full_goroutine(request *Request) {
 func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 
 	requests_map := orderedmap.NewOrderedMap()
-	keys_x_values := make(map[string]map[string]interface{})
+	keys_x_values := make(map[string]map[string]struct{})
 
 	for i, v_map := range job_ptr.Keys_x_servers {
 		for index, v := range v_map {
@@ -131,7 +131,6 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 				requests_map.Set(index, value_ptr)
 
 			}
-			InfoLoggerPtr.Println("appending", i)
 			value_ptr.(*Request).Body = append(value_ptr.(*Request).Body.([]string), i)
 		}
 
@@ -147,12 +146,12 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 	select {
 		case job_full := <-Job_full_channel: // type: Request
 		requests_map.Delete(job_full.Sender.Id)
-		for i, v := range job_full.Body.(map[string]map[string]interface{}) {
+		for i, v := range job_full.Body.(map[string]interface{}) {
 			_, ok := keys_x_values[i]
 			if !ok {
-				keys_x_values[i] = v
+				keys_x_values[i] = v.(map[string]struct{})
 			} else {
-				for index, value2 := range v {
+				for index, value2 := range v.(map[string]struct{}) {
 					keys_x_values[i][index] = value2
 				}
 			}
@@ -178,7 +177,7 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 	}
 }
 
-func send_completed_job_goroutine(job_ptr *Job) {
+func send_completed_job_goroutine(job_ptr *Job, log_message string) {
 
 	// TODO probably it is needed to use the already connection which is in place for the heartbeat
 
@@ -191,12 +190,11 @@ func send_completed_job_goroutine(job_ptr *Job) {
 
 	var reply int
 
-	err = client.Call("Mapper_handler.Job_reducer_completed", job_ptr, &reply)
+	err = client.Call("Master_handler.Job_reducer_completed", job_ptr, &reply)
 	if err != nil {
 		ErrorLoggerPtr.Fatal(err)
 	}
-	InfoLoggerPtr.Println("Completed job sent to the master.")
-
+	InfoLoggerPtr.Println(log_message)
 }
 
 func task_manager_goroutine() {
@@ -212,7 +210,7 @@ func task_manager_goroutine() {
 	for {
 		select {
 		case job_ptr := <-Job_reducer_channel:
-			InfoLoggerPtr.Println("Received Task", job_ptr.Task_id, "job", job_ptr.Id)
+			InfoLoggerPtr.Println("Received Task", job_ptr.Task_id, "job", job_ptr.Id, ".")
 
 			{
 				job_list_ptr, ok := task_hashmap[job_ptr.Task_id]
@@ -232,7 +230,7 @@ func task_manager_goroutine() {
 			}
 
 		case job_finished_ptr := <-*job_finished_channel_ptr:
-			InfoLoggerPtr.Println("Job", job_finished_ptr.Id, "of task", job_finished_ptr.Task_id, "is finished")
+			InfoLoggerPtr.Println("Job", job_finished_ptr.Id, "of task", job_finished_ptr.Task_id, "is finished.")
 			if job_list_ptr, ok := task_hashmap[job_finished_ptr.Task_id]; ok {
 				job_list_ptr.Remove(job_list_ptr.Front())
 				if job_list_ptr.Len() == 0 { delete (task_hashmap, job_finished_ptr.Task_id) }
@@ -240,7 +238,10 @@ func task_manager_goroutine() {
 
 			{
 				job_map, ok := task_finished_hashmap.Get(job_finished_ptr.Task_id)
-				if !ok { task_finished_hashmap.Set(job_finished_ptr.Task_id, make(map[string]*Job)) }
+				if !ok {
+					job_map = make(map[string]*Job)
+					task_finished_hashmap.Set(job_finished_ptr.Task_id, job_map)
+				}
 				job_map.(map[string]*Job)[job_finished_ptr.Id] = job_finished_ptr
 			}
 
@@ -252,10 +253,7 @@ func task_manager_goroutine() {
 				}
 			}
 
-
-			job_light := *job_finished_ptr
-			//job_light.Result = nil
-			go send_completed_job_goroutine(&job_light) // TODO add and manage errors
+			go send_completed_job_goroutine(job_finished_ptr, "Sent completed job" + job_finished_ptr.Id + "of task" + job_finished_ptr.Task_id) // TODO add and manage errors
 
 			state = IDLE
 
@@ -349,7 +347,7 @@ func Reducer_main() {
 	// creating channel for communicating the task
 	// to the goroutine task manager
 	Job_reducer_channel = make(chan *Job, 1000)
-
+	Job_full_channel = make(chan *Request, 1000)
 	//go task_goroutine()
 
 	go task_manager_goroutine()

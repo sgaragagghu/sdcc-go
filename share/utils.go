@@ -8,7 +8,7 @@ import (
 	"errors"
 	"strconv"
 	"math"
-//	"fmt"
+	"fmt"
 )
 
 type StubMapping map[string]interface{}
@@ -56,15 +56,41 @@ func MinOf_int32(vars ...int32) int32 {
     return min
 }
 
+func compatible(actual, expected reflect.Type) bool {
+	if actual == nil {
+		k := expected.Kind()
+		return k == reflect.Chan ||
+			k == reflect.Func ||
+			k == reflect.Interface ||
+			k == reflect.Map ||
+			k == reflect.Ptr ||
+			k == reflect.Slice
+	}
+	return actual.AssignableTo(expected)
+}
+
 func Call(funcName string, stub_storage StubMapping, params ... interface{}) (result interface{}, err error) {
 	f := reflect.ValueOf(stub_storage[funcName])
+	funcType := reflect.TypeOf(stub_storage[funcName])
 	if len(params) != f.Type().NumIn() {
 		err = errors.New("The number of params is out of index.")
 		return
 	}
 	in := make([]reflect.Value, len(params))
 	for k, param := range params {
-		in[k] = reflect.ValueOf(param)
+		expectedType := funcType.In(k)
+		actualType := reflect.TypeOf(param)
+
+		if !compatible(actualType, expectedType) {
+			err = fmt.Errorf("InvocationCausedPanic called with a mismatched parameter type [parameter #%v: expected %v; got %v].", k, expectedType, actualType)
+			return
+		}
+
+		if param == nil {
+			in[k] = reflect.New(expectedType).Elem()
+		} else {
+			in[k] = reflect.ValueOf(param)
+		}
 	}
 	var res []reflect.Value
 	res = f.Call(in)
