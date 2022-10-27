@@ -83,7 +83,7 @@ func task_injector_goroutine() { // TODO make a jsonrpc interface to send tasks 
 	InfoLoggerPtr.Println("Task correctly injected")
 }
 
-func send_job_goroutine(server_ptr *Server, job_ptr *Job, method string) {
+func send_job_goroutine(server_ptr *Server, job_ptr *Job, method string, log_message string) {
 	// connect to mapper via rpc tcp
 	client, err := rpc.Dial("tcp", server_ptr.Ip + ":" + server_ptr.Port)
 	defer client.Close()
@@ -97,7 +97,7 @@ func send_job_goroutine(server_ptr *Server, job_ptr *Job, method string) {
 	if err != nil {
 		ErrorLoggerPtr.Fatal("Send_job error:", err)
 	}
-	InfoLoggerPtr.Println("Job sent.")
+	InfoLoggerPtr.Println(log_message)
 
 }
 
@@ -179,7 +179,8 @@ func scheduler_mapper_goroutine() {
 							job_ptr.Server_id = server_id
 							working_mapper_hashmap[server_id] = server_ptr
 							InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to mapper", job_ptr.Server_id)
-							go send_job_goroutine(server_ptr, job_ptr, "Mapper_handler.Send_job")
+							go send_job_goroutine(server_ptr, job_ptr, "Mapper_handler.Send_job",
+								"Sent mapper job" + job_ptr.Id + "task" + job_ptr.Task_id)
 							break
 						}
 					} else {
@@ -203,7 +204,8 @@ func scheduler_mapper_goroutine() {
 				working_mapper_hashmap[add_mapper_ptr.Id] = add_mapper_ptr
 				add_mapper_ptr.Jobs[job_ptr.Id] = job_ptr
 				InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to mapper", job_ptr.Server_id)
-				go send_job_goroutine(add_mapper_ptr, job_ptr, "Mapper_handler.Send_job")
+				go send_job_goroutine(add_mapper_ptr, job_ptr, "Mapper_handler.Send_job",
+					"Sent mapper job" + job_ptr.Id + "task" + job_ptr.Task_id)
 			default:
 				idle_mapper_hashmap[add_mapper_ptr.Id] = add_mapper_ptr
 			}
@@ -228,13 +230,14 @@ func scheduler_mapper_goroutine() {
 					job_ptr.Server_id = job_completed_ptr.Server_id
 					InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to mapper", job_ptr.Server_id)
 					mapper_job_map_ptr[job_ptr.Id] = job_ptr
-					go send_job_goroutine(working_mapper_hashmap[job_completed_ptr.Server_id], job_ptr, "Mapper_handler.Send_job")
+					go send_job_goroutine(working_mapper_hashmap[job_completed_ptr.Server_id], job_ptr, "Mapper_handler.Send_job",
+						"Sent mapper job" + job_ptr.Id + "task" + job_ptr.Task_id)
 				default:
 					idle_mapper_hashmap[job_completed_ptr.Server_id] = working_mapper_hashmap[job_completed_ptr.Server_id]
 					delete(working_mapper_hashmap, job_completed_ptr.Server_id)
 				}
 				if len(working_mapper_hashmap) == 0 {
-					InfoLoggerPtr.Println("Task", job_completed_ptr.Id, "completed")
+					InfoLoggerPtr.Println("Mapper task", job_completed_ptr.Id, "completed.")
 					state = IDLE
 
 					task_id_int, _ := strconv.ParseInt(job_completed_ptr.Task_id, 10, 32) // TODO check error
@@ -297,7 +300,8 @@ func scheduler_mapper_goroutine() {
 							jobs[i].Server_id = server_ptr.Id
 							working_mapper_hashmap[server_ptr.Id] = server_ptr
 							server_ptr.Jobs[jobs[i].Id] = jobs[i]
-							go send_job_goroutine(server_ptr, jobs[i], "Mapper_handler.Send_job")
+							go send_job_goroutine(server_ptr, jobs[i], "Mapper_handler.Send_job",
+								"Sent mapper job" + jobs[i].Id + "task" + jobs[i].Task_id)
 						i += 1
 						}
 					} else {
@@ -337,7 +341,8 @@ func scheduler_reducer_goroutine() {
 							job_ptr.Server_id = server_id
 							working_reducer_hashmap[server_id] = server_ptr
 							InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to reducer", job_ptr.Server_id)
-							go send_job_goroutine(server_ptr, job_ptr, "Reducer_handler.Send_job")
+							go send_job_goroutine(server_ptr, job_ptr, "Reducer_handler.Send_job",
+								"Sent reducer job" + job_ptr.Id + "task" + job_ptr.Task_id)
 							break
 						}
 					} else {
@@ -361,7 +366,8 @@ func scheduler_reducer_goroutine() {
 				working_reducer_hashmap[add_reducer_ptr.Id] = add_reducer_ptr
 				add_reducer_ptr.Jobs[job_ptr.Id] = job_ptr
 				InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to reducer", job_ptr.Server_id)
-				go send_job_goroutine(add_reducer_ptr, job_ptr, "Reducer_handler.Send_job")
+				go send_job_goroutine(add_reducer_ptr, job_ptr, "Reducer_handler.Send_job",
+					"Sent reducer job" + job_ptr.Id + "task" + job_ptr.Task_id)
 			default:
 				idle_reducer_hashmap[add_reducer_ptr.Id] = add_reducer_ptr
 			}
@@ -374,13 +380,14 @@ func scheduler_reducer_goroutine() {
 					job_ptr.Server_id = job_completed_ptr.Server_id
 					InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to reducer", job_ptr.Server_id)
 					reducer_job_map_ptr[job_ptr.Id] = job_ptr
-					go send_job_goroutine(working_reducer_hashmap[job_completed_ptr.Server_id], job_ptr, "Reducer_handler.Send_job")
+					go send_job_goroutine(working_reducer_hashmap[job_completed_ptr.Server_id], job_ptr, "Reducer_handler.Send_job",
+						"Sent reducer job" + job_ptr.Id + "task" + job_ptr.Task_id)
 				default:
 					idle_reducer_hashmap[job_completed_ptr.Server_id] = working_reducer_hashmap[job_completed_ptr.Server_id]
 					delete(working_reducer_hashmap, job_completed_ptr.Server_id)
 				}
 				if len(working_reducer_hashmap) == 0 {
-					InfoLoggerPtr.Println("Task", job_completed_ptr.Id, "completed")
+					InfoLoggerPtr.Println("Reducer task", job_completed_ptr.Id, "completed.")
 					state = IDLE
 				}
 				if state == IDLE && len(Task_reducer_channel) > 0 { // if the curent task finished and theres a task
@@ -443,7 +450,8 @@ func scheduler_reducer_goroutine() {
 							jobs[i].Server_id = server_ptr.Id
 							working_reducer_hashmap[server_ptr.Id] = server_ptr
 							server_ptr.Jobs[jobs[i].Id] = jobs[i]
-							go send_job_goroutine(server_ptr, jobs[i], "Reducer_handler.Send_job")
+							go send_job_goroutine(server_ptr, jobs[i], "Reducer_handler.Send_job",
+								"Sent reducer job" + jobs[i].Id + "task" + jobs[i].Task_id)
 						i += 1
 						}
 					} else {
@@ -495,6 +503,7 @@ func Master_main() {
 	//creating channel for communicating new task
 	Task_reducer_channel = make(chan *task, 1000)
 
+	Job_reducer_completed_channel = make(chan *Job, 1000)
 
 	go scheduler_reducer_goroutine()
 	go scheduler_mapper_goroutine()
