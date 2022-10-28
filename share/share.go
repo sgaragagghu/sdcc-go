@@ -47,6 +47,7 @@ type Server struct {
 type Job struct {
 	Id string
 	Task_id string
+	Origin_Task_id string
 	Server_id string
 	Resource_link string
 	Begin int64
@@ -64,6 +65,8 @@ type Job struct {
 	Reduce_algorithm_parameters interface{}
 	Reduce_result map[string]interface{}
 	Reduce_keys []string
+	Iteration_algorithm string
+	Iteration_algorithm_parameters interface{}
 	Keys_x_servers map[string]map[string]*Server
 	Delete bool
 }

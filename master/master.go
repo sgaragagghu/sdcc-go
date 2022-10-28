@@ -18,6 +18,7 @@ import (
 
 type task struct {
 	id int32
+	origin_id int32
 	resource_link string
 	mappers_amount int32
 	margin int8
@@ -31,6 +32,8 @@ type task struct {
 	reducers_amount int32
 	reduce_algorithm string
 	reduce_algorithm_parameters interface{}
+	iteration_algorithm string
+	iteration_algorithm_parameters interface{}
 	keys_x_servers *orderedmap.OrderedMap
 }
 
@@ -67,8 +70,8 @@ func task_injector_goroutine() { // TODO make a jsonrpc interface to send tasks 
 	parameters_ptr.PushFront([]int{2, 2}) // u_2
 	parameters_ptr.PushFront([]int{3, 3}) // u_3
 */
-	task := task{-1, "https://raw.githubusercontent.com/sgaragagghu/sdcc-clustering-datasets/master/sdcc/2d-4c.csv", 1, 10,
-		'\n', ',', 2, "clustering", parameters, 1, "clustering", nil, nil}
+	task := task{-1, -1, "https://raw.githubusercontent.com/sgaragagghu/sdcc-clustering-datasets/master/sdcc/2d-4c.csv", 1, 10,
+		'\n', ',', 2, "clustering", parameters, 1, "clustering", nil, "clustering", nil, nil}
 	select {
 	case Task_mapper_channel <- &task:
 		select {
@@ -318,6 +321,28 @@ func scheduler_mapper_goroutine() {
 	}
 }
 
+func iteration_manager(job_ptr *Job, keys_x_values map[string]interface{}) {
+	var new_task_ptr *struct task
+	res, err := Call("mapper_algorithm_" + job_ptr.Iteration_algorithm, stub_storage, int(job_ptr.Properties_amount), new_task_ptr,
+		job_ptr.Separate_entries, job_ptr.Separate_properties, job_ptr.Iteration_algorithm_parameters, keys_x_values)
+	if err != nil { ErrorLoggerPtr.Fatal("Error calling ieration_algorithm:", err) }
+	if res {
+
+		select {
+		case Task_mapper_channel <- new_task_ptr:
+			select {
+			case New_task_mapper_event_channel <- struct{}{}:
+			default:
+				ErrorLoggerPtr.Fatal("Task channel is full")
+			}
+		default:
+			ErrorLoggerPtr.Fatal("Task channel is full")
+		}
+
+		InfoLoggerPtr.Println("Task correctly injected")
+	}
+}
+
 func scheduler_reducer_goroutine() {
 	InfoLoggerPtr.Println("Scheduler_reducer_goroutine started.")
 
@@ -325,7 +350,7 @@ func scheduler_reducer_goroutine() {
 	job_channel := make(chan *Job, 1000)
 	idle_reducer_hashmap := make(map[string]*Server)
 	working_reducer_hashmap := make(map[string]*Server)
-
+	keys_x_values := make(map[string]interface{})
 
 	for {
 		select {
@@ -372,6 +397,18 @@ func scheduler_reducer_goroutine() {
 				idle_reducer_hashmap[add_reducer_ptr.Id] = add_reducer_ptr
 			}
 		case job_completed_ptr := <-Job_reducer_completed_channel:
+
+			for key, key_value := range job_completed_ptr.Reduce_result {
+				value, ok := keys_x_values[key]
+				if !ok {
+					keys_x_values[key] = key_value
+				} else { // TODO hide unification algorithm... add it to the task as algorithm field...
+					for hidden_index, hidden_value := range key_value {
+						keys_x_values[key][hidden_index] = hidden_value
+					}
+				}
+			}
+
 			reducer_job_map_ptr := working_reducer_hashmap[job_completed_ptr.Server_id].Jobs
 			delete(reducer_job_map_ptr, job_completed_ptr.Id)
 			if len(reducer_job_map_ptr) == 0 {
@@ -389,6 +426,8 @@ func scheduler_reducer_goroutine() {
 				if len(working_reducer_hashmap) == 0 {
 					InfoLoggerPtr.Println("Reducer task", job_completed_ptr.Id, "completed.")
 					state = IDLE
+					keys_x_values = make(map[string]interface{})
+					go iteration_manager()
 				}
 				if state == IDLE && len(Task_reducer_channel) > 0 { // if the curent task finished and theres a task
 					select {
