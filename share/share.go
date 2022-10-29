@@ -47,7 +47,7 @@ type Server struct {
 type Job struct {
 	Id string
 	Task_id string
-	Origin_Task_id string
+	Origin_task_id string
 	Server_id string
 	Resource_link string
 	Begin int64

@@ -12,6 +12,8 @@ import (
 	//"container/list"
 	"math"
 	"strconv"
+	"bytes"
+	"bufio"
 
 	"github.com/elliotchance/orderedmap"
 )
@@ -48,6 +50,8 @@ var (
 	rem_mapper_channel chan *Server
 	add_reducer_channel chan *Server
 	rem_reducer_channel chan *Server
+
+	stub_storage StubMapping
 )
 
 func task_injector_goroutine() { // TODO make a jsonrpc interface to send tasks from a browser or curl 
@@ -244,9 +248,11 @@ func scheduler_mapper_goroutine() {
 					state = IDLE
 
 					task_id_int, _ := strconv.ParseInt(job_completed_ptr.Task_id, 10, 32) // TODO check error
-					red_task := task{int32(task_id_int), "", 0, 0, job_completed_ptr.Separate_entries,
+					origin_task_id_int, _ := strconv.ParseInt(job_completed_ptr.Origin_task_id, 10, 32) // TODO check error
+					red_task := task{int32(task_id_int), int32(origin_task_id_int), "", 0, 0, job_completed_ptr.Separate_entries,
 						job_completed_ptr.Separate_properties, job_completed_ptr.Properties_amount, "", nil,
-						job_completed_ptr.Reducers_amount, job_completed_ptr.Reduce_algorithm, job_completed_ptr.Reduce_algorithm_parameters, keys_x_servers}
+						job_completed_ptr.Reducers_amount, job_completed_ptr.Reduce_algorithm, job_completed_ptr.Reduce_algorithm_parameters,
+						job_completed_ptr.Iteration_algorithm, job_completed_ptr.Iteration_algorithm_parameters, keys_x_servers}
 
 					select {
 					case Task_reducer_channel <- &red_task:
@@ -289,11 +295,12 @@ func scheduler_mapper_goroutine() {
 							end := (int64(i) + 1) * slice_size
 							if i == 0 { begin = 0 }
 							if i == mappers_amount { end = resource_size }
-							jobs[i] = &Job{strconv.FormatInt(int64(i), 10), strconv.FormatInt(int64(task_ptr.id), 10),
+							jobs[i] = &Job{strconv.FormatInt(int64(i), 10), strconv.FormatInt(int64(i), 10), strconv.FormatInt(int64(task_ptr.id), 10),
 								"", task_ptr.resource_link, begin, end, task_ptr.margin,
 								task_ptr.separate_entries, task_ptr.separate_properties, task_ptr.properties_amount,
 								task_ptr.map_algorithm, task_ptr.map_algorithm_parameters, nil, nil, task_ptr.reducers_amount,
-								task_ptr.reduce_algorithm, task_ptr.reduce_algorithm_parameters, nil, nil, nil, false}
+								task_ptr.reduce_algorithm, task_ptr.reduce_algorithm_parameters, nil, nil,
+								task_ptr.iteration_algorithm, task_ptr.iteration_algorithm_parameters, nil, false}
 						}
 					}
 					if len(idle_mapper_hashmap) > 0 {
@@ -322,18 +329,44 @@ func scheduler_mapper_goroutine() {
 }
 
 
-func mapper_algorithm_clustering(properties_amount int, new_task *task, separate_entries byte,
-		separate_properties byte, parameters *[]interface{}, keys_x_values map[string]interface{}) (bool) {
+func iteration_algorithm_clustering_deep_equal(a map[string]interface{}, b map[string]interface{}) (bool) {
+
+	if len(a) != len(b) {
+		WarningLoggerPtr.Println("Lengths are supposed to be equal!")
+		return false
+	}
+	for i, v_o := range a {
+		v := v_o.(map[string]struct{})
+		b_i := b[i].(map[string]struct{})
+		if len(v) != len(b_i) {
+			WarningLoggerPtr.Println("Lengths are supposed to be equal!")
+			return false
+		}
+
+		for i2, v2 := range v {
+			if v2 != b_i[i2] { return false }
+		}
+
+	}
+	return true
+}
+
+func iteration_algorithm_clustering(properties_amount int, new_task_ptr *task, separate_entries byte,
+		separate_properties byte, parameters_ptr *[]interface{}, keys_x_values map[string]interface{}) (bool) {
+	parameters := *parameters_ptr
 	if len(parameters) == 0 {
 		parameters = append(parameters, keys_x_values)
 		return false
 	} else {
-		old_keys_x_values := parameters[0].(map[string]map[string]struct{})
-		new_keys_x_values := keys_x_values.(map[string]map[string]struct{})
-		if reflect.DeepEqual(old_keys_x_values, new_keys_x_values) {
+		old_keys_x_values := parameters[0].(map[string]interface{})
+
+
+
+		if iteration_algorithm_clustering_deep_equal(old_keys_x_values, keys_x_values) {
 			InfoLoggerPtr.Println("Fixpoint found, iteration concluded")
-			for key, key_value := range new_keys_x_values {
-				for index, index_value := range key_value {
+			for key, key_value_o := range keys_x_values {
+				key_value := key_value_o.(map[string]struct{})
+				for index, _ := range key_value {
 					InfoLoggerPtr.Println("key", key, "value", index)
 				}
 			}
@@ -342,8 +375,9 @@ func mapper_algorithm_clustering(properties_amount int, new_task *task, separate
 			clustering_parameters := make([]interface{}, len(keys_x_values) + 1)
 			clustering_parameters[0] = len(keys_x_values) // k
 
-			for index, value := range new_keys_x_values {
+			for _, value_o := range keys_x_values {
 				i := 1
+				value := value_o.(map[string]struct{})
 				for string_point, _ := range value {
 						reader := bytes.NewReader([]byte(string_point))
 						buffered_read := bufio.NewReader(reader)
@@ -367,26 +401,28 @@ func mapper_algorithm_clustering(properties_amount int, new_task *task, separate
 				}
 			}
 
-			new_task := task{-1, -1, "https://raw.githubusercontent.com/sgaragagghu/sdcc-clustering-datasets/master/sdcc/2d-4c.csv", 1, 10,
+			new_task_ptr = &task{-1, -1, "https://raw.githubusercontent.com/sgaragagghu/sdcc-clustering-datasets/master/sdcc/2d-4c.csv", 1, 10,
 				'\n', ',', 2, "clustering", clustering_parameters, 1, "clustering", nil, "clustering", nil, nil}
 			InfoLoggerPtr.Println("Fixpoint not found yet, new_task created")
 
-			for key, key_value := range new_keys_x_values {
-				for index, index_value := range key_value {
+			for key, key_value_o := range keys_x_values {
+				key_value := key_value_o.(map[string]struct{})
+				for index, _ := range key_value {
 					InfoLoggerPtr.Println("key", key, "value", index)
 				}
 			}
 			return true
 		}
 	}
+	return false
 }
 
 func iteration_manager(job_ptr *Job, keys_x_values map[string]interface{}) {
-	var new_task_ptr *struct task
+	var new_task_ptr *task
 	res, err := Call("mapper_algorithm_" + job_ptr.Iteration_algorithm, stub_storage, int(job_ptr.Properties_amount), new_task_ptr,
 		job_ptr.Separate_entries, job_ptr.Separate_properties, &job_ptr.Iteration_algorithm_parameters, keys_x_values)
 	if err != nil { ErrorLoggerPtr.Fatal("Error calling ieration_algorithm:", err) }
-	if res {
+	if res.(bool) {
 		select {
 		case Task_mapper_channel <- new_task_ptr:
 			select {
@@ -458,12 +494,12 @@ func scheduler_reducer_goroutine() {
 		case job_completed_ptr := <-Job_reducer_completed_channel:
 
 			for key, key_value := range job_completed_ptr.Reduce_result {
-				value, ok := keys_x_values[key]
+				_, ok := keys_x_values[key]
 				if !ok {
 					keys_x_values[key] = key_value
 				} else { // TODO hide unification algorithm... add it to the task as algorithm field...
-					for hidden_index, hidden_value := range key_value {
-						keys_x_values[key][hidden_index] = hidden_value
+					for hidden_index, hidden_value := range key_value.(map[string]struct{}) {
+						keys_x_values[key].(map[string]struct{})[hidden_index] = hidden_value
 					}
 				}
 			}
@@ -486,7 +522,7 @@ func scheduler_reducer_goroutine() {
 					InfoLoggerPtr.Println("Reducer task", job_completed_ptr.Id, "completed.")
 					state = IDLE
 					keys_x_values = make(map[string]interface{})
-					go iteration_manager()
+					go iteration_manager(job_completed_ptr, keys_x_values)
 				}
 				if state == IDLE && len(Task_reducer_channel) > 0 { // if the curent task finished and theres a task
 					select {
@@ -537,9 +573,10 @@ func scheduler_reducer_goroutine() {
 							}
 
 							jobs[i] = &Job{strconv.FormatInt(int64(i), 10), strconv.FormatInt(int64(task_ptr.id), 10),
-								"", "", 0, 0, 0, task_ptr.separate_entries, task_ptr.separate_properties,
-								task_ptr.properties_amount, "", nil, nil, nil, task_ptr.reducers_amount,
-								task_ptr.reduce_algorithm, task_ptr.reduce_algorithm_parameters, nil, nil, keys, false}
+								strconv.FormatInt(int64(task_ptr.id), 10), "", "", 0, 0, 0, task_ptr.separate_entries,
+								task_ptr.separate_properties, task_ptr.properties_amount, "", nil, nil, nil,
+								task_ptr.reducers_amount, task_ptr.reduce_algorithm, task_ptr.reduce_algorithm_parameters,
+								nil, nil, task_ptr.iteration_algorithm, task_ptr.iteration_algorithm_parameters, keys, false}
 						}
 					}
 					if len(idle_reducer_hashmap) > 0 {
@@ -570,6 +607,11 @@ func scheduler_reducer_goroutine() {
 func Master_main() {
 
 	gob.Register([]interface{}(nil))
+
+	stub_storage = map[string]interface{}{
+		"iteration_algorithm_clustering": iteration_algorithm_clustering,
+		//"funcB": funcB,
+	}
 
 	// creating channel for communicating the heartbeat
 	// to the goroutine heartbeat manager
