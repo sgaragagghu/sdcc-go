@@ -351,12 +351,16 @@ func iteration_algorithm_clustering_deep_equal(a map[string]interface{}, b map[s
 	return true
 }
 
-func iteration_algorithm_clustering(properties_amount int, new_task_ptr *task, separate_entries byte,
-		separate_properties byte, parameters_ptr *[]interface{}, keys_x_values map[string]interface{}) (bool) {
-	parameters := *parameters_ptr
+func iteration_algorithm_clustering(properties_amount int, new_task_ptr_ptr **task, separate_entries byte,
+separate_properties byte, parameters_o interface{}, keys_x_values map[string]interface{}) (bool) {
+
+	if parameters_o == nil {
+		parameters_o = make([]interface{}, 0)
+	}
+	parameters := parameters_o.([]interface{})
 	if len(parameters) == 0 {
 		parameters = append(parameters, keys_x_values)
-		return false
+		InfoLoggerPtr.Println(" TODO delete me ")
 	} else {
 		old_keys_x_values := parameters[0].(map[string]interface{})
 
@@ -370,48 +374,47 @@ func iteration_algorithm_clustering(properties_amount int, new_task_ptr *task, s
 					InfoLoggerPtr.Println("key", key, "value", index)
 				}
 			}
-		} else {
-
-			clustering_parameters := make([]interface{}, len(keys_x_values) + 1)
-			clustering_parameters[0] = len(keys_x_values) // k
-
-			for _, value_o := range keys_x_values {
-				i := 1
-				value := value_o.(map[string]struct{})
-				for string_point, _ := range value {
-						reader := bytes.NewReader([]byte(string_point))
-						buffered_read := bufio.NewReader(reader)
-						point := make([]float64, properties_amount)
-						j := 1
-						s := ""
-					for char, err := buffered_read.ReadByte(); err == nil; char, err = buffered_read.ReadByte() {
-						//InfoLoggerPtr.Println(string(char))
-						if char == separate_properties {
-							if j <= properties_amount {
-								point[j - 1], _ = strconv.ParseFloat(s, 64) // TODO check the error
-								//full_s += string(separate_properties) + s
-								s = ""
-								break
-							} else { ErrorLoggerPtr.Fatal("Parsing failed") }
-						} else {
-							s += string(char) // TODO Try to use a buffer like bytes.NewBufferString(ret) for better performances
-						}
-					}
-					clustering_parameters[i] = point
-				}
-			}
-
-			new_task_ptr = &task{-1, -1, "https://raw.githubusercontent.com/sgaragagghu/sdcc-clustering-datasets/master/sdcc/2d-4c.csv", 1, 10,
-				'\n', ',', 2, "clustering", clustering_parameters, 1, "clustering", nil, "clustering", nil, nil}
-			InfoLoggerPtr.Println("Fixpoint not found yet, new_task created")
-
-			for key, key_value_o := range keys_x_values {
-				key_value := key_value_o.(map[string]struct{})
-				for index, _ := range key_value {
-					InfoLoggerPtr.Println("key", key, "value", index)
-				}
-			}
 			return true
+		}
+	}
+
+	clustering_parameters := make([]interface{}, len(keys_x_values) + 1)
+	clustering_parameters[0] = len(keys_x_values) // k
+
+	for _, value_o := range keys_x_values {
+		i := 1
+		value := value_o.(map[string]struct{})
+		for string_point, _ := range value {
+				reader := bytes.NewReader([]byte(string_point))
+				buffered_read := bufio.NewReader(reader)
+				point := make([]float64, properties_amount)
+				j := 1
+				s := ""
+			for char, err := buffered_read.ReadByte(); err == nil; char, err = buffered_read.ReadByte() {
+				//InfoLoggerPtr.Println(string(char))
+				if char == separate_properties {
+					if j <= properties_amount {
+						point[j - 1], _ = strconv.ParseFloat(s, 64) // TODO check the error
+						//full_s += string(separate_properties) + s
+						s = ""
+						break
+					} else { ErrorLoggerPtr.Fatal("Parsing failed") }
+				} else {
+					s += string(char) // TODO Try to use a buffer like bytes.NewBufferString(ret) for better performances
+				}
+			}
+			clustering_parameters[i] = point
+		}
+	}
+
+	*new_task_ptr_ptr = &task{-1, -1, "https://raw.githubusercontent.com/sgaragagghu/sdcc-clustering-datasets/master/sdcc/2d-4c.csv", 1, 10,
+		'\n', ',', 2, "clustering", clustering_parameters, 1, "clustering", nil, "clustering", nil, nil}
+	InfoLoggerPtr.Println("Fixpoint not found yet, new_task created")
+
+	for key, key_value_o := range keys_x_values {
+		key_value := key_value_o.(map[string]struct{})
+		for index, _ := range key_value {
+			InfoLoggerPtr.Println("key", key, "value", index)
 		}
 	}
 	return false
@@ -419,10 +422,11 @@ func iteration_algorithm_clustering(properties_amount int, new_task_ptr *task, s
 
 func iteration_manager(job_ptr *Job, keys_x_values map[string]interface{}) {
 	var new_task_ptr *task
-	res, err := Call("mapper_algorithm_" + job_ptr.Iteration_algorithm, stub_storage, int(job_ptr.Properties_amount), new_task_ptr,
-		job_ptr.Separate_entries, job_ptr.Separate_properties, &job_ptr.Iteration_algorithm_parameters, keys_x_values)
-	if err != nil { ErrorLoggerPtr.Fatal("Error calling ieration_algorithm:", err) }
-	if res.(bool) {
+	res, err := Call("iteration_algorithm_" + job_ptr.Iteration_algorithm, stub_storage, int(job_ptr.Properties_amount), &new_task_ptr,
+		job_ptr.Separate_entries, job_ptr.Separate_properties, job_ptr.Iteration_algorithm_parameters, keys_x_values)
+	if err != nil { ErrorLoggerPtr.Fatal("Error calling iteration_algorithm:", err) }
+
+	if !res.(bool) {
 		select {
 		case Task_mapper_channel <- new_task_ptr:
 			select {
