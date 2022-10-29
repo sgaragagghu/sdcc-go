@@ -321,13 +321,72 @@ func scheduler_mapper_goroutine() {
 	}
 }
 
+
+func mapper_algorithm_clustering(properties_amount int, new_task *task, separate_entries byte,
+		separate_properties byte, parameters *[]interface{}, keys_x_values map[string]interface{}) (bool) {
+	if len(parameters) == 0 {
+		parameters = append(parameters, keys_x_values)
+		return false
+	} else {
+		old_keys_x_values := parameters[0].(map[string]map[string]struct{})
+		new_keys_x_values := keys_x_values.(map[string]map[string]struct{})
+		if reflect.DeepEqual(old_keys_x_values, new_keys_x_values) {
+			InfoLoggerPtr.Println("Fixpoint found, iteration concluded")
+			for key, key_value := range new_keys_x_values {
+				for index, index_value := range key_value {
+					InfoLoggerPtr.Println("key", key, "value", index)
+				}
+			}
+		} else {
+
+			clustering_parameters := make([]interface{}, len(keys_x_values) + 1)
+			clustering_parameters[0] = len(keys_x_values) // k
+
+			for index, value := range new_keys_x_values {
+				i := 1
+				for string_point, _ := range value {
+						reader := bytes.NewReader([]byte(string_point))
+						buffered_read := bufio.NewReader(reader)
+						point := make([]float64, properties_amount)
+						j := 1
+						s := ""
+					for char, err := buffered_read.ReadByte(); err == nil; char, err = buffered_read.ReadByte() {
+						//InfoLoggerPtr.Println(string(char))
+						if char == separate_properties {
+							if j <= properties_amount {
+								point[j - 1], _ = strconv.ParseFloat(s, 64) // TODO check the error
+								//full_s += string(separate_properties) + s
+								s = ""
+								break
+							} else { ErrorLoggerPtr.Fatal("Parsing failed") }
+						} else {
+							s += string(char) // TODO Try to use a buffer like bytes.NewBufferString(ret) for better performances
+						}
+					}
+					clustering_parameters[i] = point
+				}
+			}
+
+			new_task := task{-1, -1, "https://raw.githubusercontent.com/sgaragagghu/sdcc-clustering-datasets/master/sdcc/2d-4c.csv", 1, 10,
+				'\n', ',', 2, "clustering", clustering_parameters, 1, "clustering", nil, "clustering", nil, nil}
+			InfoLoggerPtr.Println("Fixpoint not found yet, new_task created")
+
+			for key, key_value := range new_keys_x_values {
+				for index, index_value := range key_value {
+					InfoLoggerPtr.Println("key", key, "value", index)
+				}
+			}
+			return true
+		}
+	}
+}
+
 func iteration_manager(job_ptr *Job, keys_x_values map[string]interface{}) {
 	var new_task_ptr *struct task
 	res, err := Call("mapper_algorithm_" + job_ptr.Iteration_algorithm, stub_storage, int(job_ptr.Properties_amount), new_task_ptr,
-		job_ptr.Separate_entries, job_ptr.Separate_properties, job_ptr.Iteration_algorithm_parameters, keys_x_values)
+		job_ptr.Separate_entries, job_ptr.Separate_properties, &job_ptr.Iteration_algorithm_parameters, keys_x_values)
 	if err != nil { ErrorLoggerPtr.Fatal("Error calling ieration_algorithm:", err) }
 	if res {
-
 		select {
 		case Task_mapper_channel <- new_task_ptr:
 			select {
