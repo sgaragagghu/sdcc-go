@@ -243,7 +243,7 @@ func prepare_and_send_job_full_goroutine(request_ptr *Request, jobs_hashmap map[
 
 	req := &Request{server, request_ptr.Sender, 0, time.Now(), keys_x_values}
 
-	go send_job_full_goroutine(req.Receiver, req, "Sent job full" + request_ptr.Body.([]string)[0] + "to the reducer" + req.Receiver.Id)
+	go send_job_full_goroutine(req.Receiver, req, "Sent job full " + request_ptr.Body.([]string)[0] + " to the reducer " + req.Receiver.Id)
 }
 
 func task_manager_goroutine() {

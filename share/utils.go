@@ -25,7 +25,7 @@ func Welford_one_pass(mean []float64, sample []float64, nsamples float64) ([]flo
 func Euclidean_distance(i int, a []float64, b []float64) (float64) {
 	var squared_sum float64 = 0
 	for i -= 1; i >= 0; i -= 1 {
-		squared_sum += a[i] * a[i] + b[i] * b[i]
+		squared_sum += math.Pow(a[i] - b[i], 2)
 	}
 	return math.Sqrt(squared_sum)
 }
