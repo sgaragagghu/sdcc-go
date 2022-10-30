@@ -56,17 +56,10 @@ type Job struct {
 	Separate_entries byte
 	Separate_properties byte
 	Properties_amount int8
-	Map_algorithm string
-	Map_algorithm_parameters interface{}
-	Map_result map[string]interface{}
-	Map_keys []string
-	Reducers_amount int32
-	Reduce_algorithm string
-	Reduce_algorithm_parameters interface{}
-	Reduce_result map[string]interface{}
-	Reduce_keys []string
-	Iteration_algorithm string
-	Iteration_algorithm_parameters interface{}
+	Algorithm string
+	Algorithm_parameters interface{}
+	Result map[string]interface{}
+	Keys []string
 	Keys_x_servers map[string]map[string]*Server
 	Delete bool
 }

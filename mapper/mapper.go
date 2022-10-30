@@ -167,11 +167,11 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 	keys := make([]string, 0)
 
 	// TODO check the error
-	res, err := Call("mapper_algorithm_" + job_ptr.Map_algorithm, stub_storage, int(job_ptr.Properties_amount), &keys,
-		job_ptr.Separate_entries, job_ptr.Separate_properties, job_ptr.Map_algorithm_parameters, (*load_ptr)[actual_begin:actual_end])
+	res, err := Call("mapper_algorithm_" + job_ptr.Algorithm, stub_storage, int(job_ptr.Properties_amount), &keys,
+		job_ptr.Separate_entries, job_ptr.Separate_properties, job_ptr.Algorithm_parameters, (*load_ptr)[actual_begin:actual_end])
 	if err != nil { ErrorLoggerPtr.Fatal("Error calling mapper_algorithm:", err) }
-	job_ptr.Map_result = res.(map[string]interface {})
-	job_ptr.Map_keys = keys
+	job_ptr.Result = res.(map[string]interface {})
+	job_ptr.Keys = keys
 	select {
 	case *chan_ptr <- job_ptr:
 	default:
@@ -228,7 +228,7 @@ func prepare_and_send_job_full_goroutine(request_ptr *Request, jobs_hashmap map[
 
 	for i, v := range jobs_hashmap {
 		for _, key := range request_ptr.Body.([]string)[1:] {
-			if res, ok := v.Map_result[key]; ok {
+			if res, ok := v.Result[key]; ok {
 				value, ok2 := keys_x_values[i]
 				if !ok2 {
 					keys_x_values[key] = res
@@ -302,9 +302,9 @@ func task_manager_goroutine() {
 				}
 			}
 
-
+			// TODO POBRABILE BUG QUI
 			job_light := *job_finished_ptr
-			job_light.Map_result = nil
+			job_light.Result = nil
 			go send_completed_job_goroutine(&job_light) // TODO add and manage errors
 
 			state = IDLE

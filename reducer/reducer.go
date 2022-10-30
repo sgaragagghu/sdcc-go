@@ -165,11 +165,11 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 	keys := make([]string, 1)
 
 	// TODO check the error
-	res, err := Call("reducer_algorithm_" + job_ptr.Reduce_algorithm, stub_storage, int(job_ptr.Properties_amount), keys,
-		keys_x_values, job_ptr.Separate_properties, job_ptr.Reduce_algorithm_parameters)
+	res, err := Call("reducer_algorithm_" + job_ptr.Algorithm, stub_storage, int(job_ptr.Properties_amount), keys,
+		keys_x_values, job_ptr.Separate_properties, job_ptr.Algorithm_parameters)
 	if err != nil { ErrorLoggerPtr.Fatal("Error calling reducer_algorithm:", err) }
-	job_ptr.Reduce_result = res.(map[string]interface {})
-	job_ptr.Reduce_keys = keys
+	job_ptr.Result = res.(map[string]interface {})
+	job_ptr.Keys = keys
 	select {
 	case *chan_ptr <- job_ptr:
 	default:
