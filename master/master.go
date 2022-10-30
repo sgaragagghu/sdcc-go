@@ -391,15 +391,11 @@ func iteration_algorithm_clustering(task_ptr *task, new_task_ptr_ptr **task, key
 		}
 	}
 
-	clustering_parameters := make([]interface{}, len(keys_x_values) + 1)
-	clustering_parameters[0] = len(keys_x_values) // k
-
 	for index_string, value := range keys_x_values {
 		// i := 1
 		// value := value_o.(map[string]struct{})
 		index, _ := strconv.Atoi(index_string) // TODO check error
-		InfoLoggerPtr.Println("LENTGH", len(clustering_parameters))
-		clustering_parameters[index + 1] = value.([]float64)
+		task_ptr.map_algorithm_parameters.([]interface{})[index + 1] = value.([]float64)
 		/*
 		for string_point, _ := range value {
 				reader := bytes.NewReader([]byte(string_point))
@@ -431,9 +427,9 @@ func iteration_algorithm_clustering(task_ptr *task, new_task_ptr_ptr **task, key
 		task_ptr.iteration_algorithm, task_ptr.iteration_algorithm_parameters, nil}
 	InfoLoggerPtr.Println("Fixpoint not found yet, new_task created")
 
-	for key, key_value_o := range keys_x_values {
-		key_value := key_value_o.([]float64)
-		InfoLoggerPtr.Println("key", key, "value", key_value)
+	for index, index_value_o := range task_ptr.map_algorithm_parameters.([]interface{})[1:] {
+		index_value := index_value_o.([]float64)
+		InfoLoggerPtr.Println("key", index, "value", index_value)
 	}
 	/*
 	for key, key_value_o := range keys_x_values {
