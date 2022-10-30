@@ -12,8 +12,8 @@ import (
 	//"container/list"
 	"math"
 	"strconv"
-	"bytes"
-	"bufio"
+//	"bytes"
+//	"bufio"
 
 	"github.com/elliotchance/orderedmap"
 )
@@ -187,7 +187,7 @@ func scheduler_mapper_goroutine() {
 							working_mapper_hashmap[server_id] = server_ptr
 							InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to mapper", job_ptr.Server_id)
 							go send_job_goroutine(server_ptr, job_ptr, "Mapper_handler.Send_job",
-								"Sent mapper job" + job_ptr.Id + "task" + job_ptr.Task_id)
+								"Sent mapper job " + job_ptr.Id + " task " + job_ptr.Task_id)
 							break
 						}
 					} else {
@@ -212,7 +212,7 @@ func scheduler_mapper_goroutine() {
 				add_mapper_ptr.Jobs[job_ptr.Id] = job_ptr
 				InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to mapper", job_ptr.Server_id)
 				go send_job_goroutine(add_mapper_ptr, job_ptr, "Mapper_handler.Send_job",
-					"Sent mapper job" + job_ptr.Id + "task" + job_ptr.Task_id)
+					"Sent mapper job " + job_ptr.Id + " task " + job_ptr.Task_id)
 			default:
 				idle_mapper_hashmap[add_mapper_ptr.Id] = add_mapper_ptr
 			}
@@ -226,9 +226,10 @@ func scheduler_mapper_goroutine() {
 					value = make(map[string]*Server)
 					keys_x_servers.Set(v, value)
 				}
-				server_light := working_mapper_hashmap[job_completed_ptr.Server_id]
-				server_light.Jobs = nil // TODO manage it in a way to not waste memory
-				value.(map[string]*Server)[job_completed_ptr.Server_id] = server_light
+				server := working_mapper_hashmap[job_completed_ptr.Server_id]
+				// TODO manage it in a way to not waste memory
+				server_light := Server{server.Id, server.Ip, server.Port, server.Last_heartbeat, nil, server.Role}
+				value.(map[string]*Server)[job_completed_ptr.Server_id] = &server_light
 			}
 
 			if len(mapper_job_map_ptr) == 0 {
@@ -238,13 +239,13 @@ func scheduler_mapper_goroutine() {
 					InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to mapper", job_ptr.Server_id)
 					mapper_job_map_ptr[job_ptr.Id] = job_ptr
 					go send_job_goroutine(working_mapper_hashmap[job_completed_ptr.Server_id], job_ptr, "Mapper_handler.Send_job",
-						"Sent mapper job" + job_ptr.Id + "task" + job_ptr.Task_id)
+						"Sent mapper job " + job_ptr.Id + " task " + job_ptr.Task_id)
 				default:
 					idle_mapper_hashmap[job_completed_ptr.Server_id] = working_mapper_hashmap[job_completed_ptr.Server_id]
 					delete(working_mapper_hashmap, job_completed_ptr.Server_id)
 				}
 				if len(working_mapper_hashmap) == 0 {
-					InfoLoggerPtr.Println("Mapper task", job_completed_ptr.Id, "completed.")
+					InfoLoggerPtr.Println("Mapper job", job_completed_ptr.Id, "task", job_completed_ptr.Task_id, "completed.")
 					state = IDLE
 
 					task_id_int, _ := strconv.ParseInt(job_completed_ptr.Task_id, 10, 32) // TODO check error
@@ -295,8 +296,8 @@ func scheduler_mapper_goroutine() {
 							end := (int64(i) + 1) * slice_size
 							if i == 0 { begin = 0 }
 							if i == mappers_amount { end = resource_size }
-							jobs[i] = &Job{strconv.FormatInt(int64(i), 10), strconv.FormatInt(int64(i), 10), strconv.FormatInt(int64(task_ptr.id), 10),
-								"", task_ptr.resource_link, begin, end, task_ptr.margin,
+							jobs[i] = &Job{strconv.FormatInt(int64(i), 10), strconv.FormatInt(int64(task_ptr.id), 10),
+								strconv.FormatInt(int64(task_ptr.origin_id), 10), "", task_ptr.resource_link, begin, end, task_ptr.margin,
 								task_ptr.separate_entries, task_ptr.separate_properties, task_ptr.properties_amount,
 								task_ptr.map_algorithm, task_ptr.map_algorithm_parameters, nil, nil, task_ptr.reducers_amount,
 								task_ptr.reduce_algorithm, task_ptr.reduce_algorithm_parameters, nil, nil,
@@ -311,7 +312,7 @@ func scheduler_mapper_goroutine() {
 							working_mapper_hashmap[server_ptr.Id] = server_ptr
 							server_ptr.Jobs[jobs[i].Id] = jobs[i]
 							go send_job_goroutine(server_ptr, jobs[i], "Mapper_handler.Send_job",
-								"Sent mapper job" + jobs[i].Id + "task" + jobs[i].Task_id)
+								"Sent mapper job " + jobs[i].Id + " task " + jobs[i].Task_id)
 						i += 1
 						}
 					} else {
@@ -335,6 +336,23 @@ func iteration_algorithm_clustering_deep_equal(a map[string]interface{}, b map[s
 		WarningLoggerPtr.Println("Lengths are supposed to be equal!")
 		return false
 	}
+
+
+	for i, v_o := range a {
+		v := v_o.([]float64)
+		b_i := b[i].([]float64)
+		if len(v) != len(b_i) {
+			WarningLoggerPtr.Println("Lengths are supposed to be equal!")
+			return false
+		}
+
+		for i2, v2 := range v {
+			if v2 != b_i[i2] { return false }
+		}
+
+	}
+
+	/*
 	for i, v_o := range a {
 		v := v_o.(map[string]struct{})
 		b_i := b[i].(map[string]struct{})
@@ -347,24 +365,24 @@ func iteration_algorithm_clustering_deep_equal(a map[string]interface{}, b map[s
 			if v2 != b_i[i2] { return false }
 		}
 
-	}
+	}*/
+
 	return true
 }
 
 func iteration_algorithm_clustering(properties_amount int, new_task_ptr_ptr **task, separate_entries byte,
-separate_properties byte, parameters_o interface{}, keys_x_values map[string]interface{}) (bool) {
+separate_properties byte, parameters interface{}, keys_x_values map[string]interface{}) (bool) {
 
-	if parameters_o == nil {
-		parameters_o = make([]interface{}, 0)
+	if parameters == nil {
+		InfoLoggerPtr.Println(" TODO delete me1 ")
+		parameters = make([]interface{}, 0)
 	}
-	parameters := parameters_o.([]interface{})
-	if len(parameters) == 0 {
-		parameters = append(parameters, keys_x_values)
-		InfoLoggerPtr.Println(" TODO delete me ")
+
+	if len(parameters.([]interface{})) == 0 {
+		parameters = append(parameters.([]interface{}), keys_x_values)
+		InfoLoggerPtr.Println(" TODO delete me2 ")
 	} else {
-		old_keys_x_values := parameters[0].(map[string]interface{})
-
-
+		old_keys_x_values := parameters.([]interface{})[0].(map[string]interface{})
 
 		if iteration_algorithm_clustering_deep_equal(old_keys_x_values, keys_x_values) {
 			InfoLoggerPtr.Println("Fixpoint found, iteration concluded")
@@ -381,9 +399,13 @@ separate_properties byte, parameters_o interface{}, keys_x_values map[string]int
 	clustering_parameters := make([]interface{}, len(keys_x_values) + 1)
 	clustering_parameters[0] = len(keys_x_values) // k
 
-	for _, value_o := range keys_x_values {
-		i := 1
-		value := value_o.(map[string]struct{})
+	for index_string, value := range keys_x_values {
+		// i := 1
+		// value := value_o.(map[string]struct{})
+		index, _ := strconv.Atoi(index_string) // TODO check error
+		InfoLoggerPtr.Println("LENTGH", len(clustering_parameters))
+		clustering_parameters[index + 1] = value.([]float64)
+		/*
 		for string_point, _ := range value {
 				reader := bytes.NewReader([]byte(string_point))
 				buffered_read := bufio.NewReader(reader)
@@ -405,18 +427,24 @@ separate_properties byte, parameters_o interface{}, keys_x_values map[string]int
 			}
 			clustering_parameters[i] = point
 		}
+		*/
 	}
 
 	*new_task_ptr_ptr = &task{-1, -1, "https://raw.githubusercontent.com/sgaragagghu/sdcc-clustering-datasets/master/sdcc/2d-4c.csv", 1, 10,
-		'\n', ',', 2, "clustering", clustering_parameters, 1, "clustering", nil, "clustering", nil, nil}
+		'\n', ',', 2, "clustering", clustering_parameters, 1, "clustering", nil, "clustering", parameters, nil}
 	InfoLoggerPtr.Println("Fixpoint not found yet, new_task created")
 
+	for key, key_value_o := range keys_x_values {
+		key_value := key_value_o.([]float64)
+		InfoLoggerPtr.Println("key", key, "value", key_value)
+	}
+	/*
 	for key, key_value_o := range keys_x_values {
 		key_value := key_value_o.(map[string]struct{})
 		for index, _ := range key_value {
 			InfoLoggerPtr.Println("key", key, "value", index)
 		}
-	}
+	}*/
 	return false
 }
 
@@ -466,7 +494,7 @@ func scheduler_reducer_goroutine() {
 							working_reducer_hashmap[server_id] = server_ptr
 							InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to reducer", job_ptr.Server_id)
 							go send_job_goroutine(server_ptr, job_ptr, "Reducer_handler.Send_job",
-								"Sent reducer job" + job_ptr.Id + "task" + job_ptr.Task_id)
+								"Sent reducer job " + job_ptr.Id + " task " + job_ptr.Task_id)
 							break
 						}
 					} else {
@@ -491,7 +519,7 @@ func scheduler_reducer_goroutine() {
 				add_reducer_ptr.Jobs[job_ptr.Id] = job_ptr
 				InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to reducer", job_ptr.Server_id)
 				go send_job_goroutine(add_reducer_ptr, job_ptr, "Reducer_handler.Send_job",
-					"Sent reducer job" + job_ptr.Id + "task" + job_ptr.Task_id)
+					"Sent reducer job " + job_ptr.Id + " task " + job_ptr.Task_id)
 			default:
 				idle_reducer_hashmap[add_reducer_ptr.Id] = add_reducer_ptr
 			}
@@ -517,16 +545,16 @@ func scheduler_reducer_goroutine() {
 					InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to reducer", job_ptr.Server_id)
 					reducer_job_map_ptr[job_ptr.Id] = job_ptr
 					go send_job_goroutine(working_reducer_hashmap[job_completed_ptr.Server_id], job_ptr, "Reducer_handler.Send_job",
-						"Sent reducer job" + job_ptr.Id + "task" + job_ptr.Task_id)
+						"Sent reducer job " + job_ptr.Id + " task " + job_ptr.Task_id)
 				default:
 					idle_reducer_hashmap[job_completed_ptr.Server_id] = working_reducer_hashmap[job_completed_ptr.Server_id]
 					delete(working_reducer_hashmap, job_completed_ptr.Server_id)
 				}
 				if len(working_reducer_hashmap) == 0 {
-					InfoLoggerPtr.Println("Reducer task", job_completed_ptr.Id, "completed.")
+					InfoLoggerPtr.Println("Reducer job", job_completed_ptr.Id, "task", job_completed_ptr.Task_id, "completed.")
 					state = IDLE
-					keys_x_values = make(map[string]interface{})
 					go iteration_manager(job_completed_ptr, keys_x_values)
+					keys_x_values = make(map[string]interface{})
 				}
 				if state == IDLE && len(Task_reducer_channel) > 0 { // if the curent task finished and theres a task
 					select {
@@ -590,7 +618,7 @@ func scheduler_reducer_goroutine() {
 							working_reducer_hashmap[server_ptr.Id] = server_ptr
 							server_ptr.Jobs[jobs[i].Id] = jobs[i]
 							go send_job_goroutine(server_ptr, jobs[i], "Reducer_handler.Send_job",
-								"Sent reducer job" + jobs[i].Id + "task" + jobs[i].Task_id)
+								"Sent reducer job " + jobs[i].Id + " task " + jobs[i].Task_id)
 						i += 1
 						}
 					} else {
