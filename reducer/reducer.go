@@ -253,7 +253,7 @@ func task_manager_goroutine() {
 				}
 			}
 
-			go send_completed_job_goroutine(job_finished_ptr, "Sent completed job" + job_finished_ptr.Id + "of task" + job_finished_ptr.Task_id) // TODO add and manage errors
+			go send_completed_job_goroutine(job_finished_ptr, "Sent completed job " + job_finished_ptr.Id + " of task " + job_finished_ptr.Task_id) // TODO add and manage errors
 
 			state = IDLE
 
