@@ -51,7 +51,7 @@ func heartbeat_goroutine(client *rpc.Client) {
 }
 
 func reducer_algorithm_clustering(properties_amount int, keys []string, keys_x_values map[string]map[string]struct{},
-		separate_properties byte, parameters []interface{}) (map[string]interface{}) {
+		separate_properties byte, separate_entries byte, parameters []interface{}) (map[string]interface{}) {
 
 	res := make(map[string]interface{})
 /*
@@ -76,15 +76,16 @@ func reducer_algorithm_clustering(properties_amount int, keys []string, keys_x_v
 				j := 1
 				s := ""
 			for char, err := buffered_read.ReadByte(); err == nil; char, err = buffered_read.ReadByte() {
-				//InfoLoggerPtr.Println(string(char))
-				if char == separate_properties {
-					if j <= properties_amount {
+				InfoLoggerPtr.Println("char:", string(char))
+				if char == separate_properties || char == separate_entries {
+					if (char == separate_properties && j < properties_amount) ||
+							(char == separate_entries /*&& j <= properties_amount*/ ){
 						point[j - 1], _ = strconv.ParseFloat(s, 64) // TODO check the error
 						InfoLoggerPtr.Println("cazz", point[j - 1])
 						//full_s += string(separate_properties) + s
 						s = ""
 						j += 1
-						if j > properties_amount { break }
+						//if j > properties_amount { break }
 					} else { ErrorLoggerPtr.Fatal("Parsing failed") }
 				} else {
 					s += string(char) // TODO Try to use a buffer like bytes.NewBufferString(ret) for better performances
@@ -169,7 +170,7 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 
 	// TODO check the error
 	res, err := Call("reducer_algorithm_" + job_ptr.Algorithm, stub_storage, int(job_ptr.Properties_amount), keys,
-		keys_x_values, job_ptr.Separate_properties, job_ptr.Algorithm_parameters)
+		keys_x_values, job_ptr.Separate_properties, job_ptr.Separate_entries, job_ptr.Algorithm_parameters)
 	if err != nil { ErrorLoggerPtr.Fatal("Error calling reducer_algorithm:", err) }
 	job_ptr.Result = res.(map[string]interface {})
 	job_ptr.Keys = keys

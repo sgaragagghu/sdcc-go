@@ -108,14 +108,14 @@ func mapper_algorithm_clustering(properties_amount int, keys *[]string, separate
 			if char == separate_properties {
 				if j < (properties_amount)  {
 					point[j - 1], _ = strconv.ParseFloat(s, 64) //TODO check the error
-					full_s = s
+					full_s = s + string(separate_properties)
 					s = ""
 					j += 1
 				} else { ErrorLoggerPtr.Fatal("Parsing failed") }
 			} else if char == separate_entries {
 				if j == (properties_amount) {
 					point[j - 1], _ = strconv.ParseFloat(s, 64) // TODO check the error
-					full_s += string(separate_properties) + s
+					full_s += s + string(separate_entries)
 					break
 				} else { ErrorLoggerPtr.Fatal("Parsing failed") }
 			} else {
