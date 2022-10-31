@@ -16,8 +16,9 @@ type StubMapping map[string]interface{}
 func Welford_one_pass(mean []float64, sample []float64, nsamples float64) ([]float64) {
 	if(nsamples > 0) {
 		for i, _ := range mean {
+			//InfoLoggerPtr.Println("before mean", mean, "sample", sample, "nsamples", nsamples)
 			mean[i] = mean[i] + (sample[i] - mean[i]) / nsamples
-			InfoLoggerPtr.Println("WHAT", mean)
+			//InfoLoggerPtr.Println("after", mean)
 		}
 	}
 	return mean
