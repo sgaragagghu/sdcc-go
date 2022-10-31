@@ -593,7 +593,9 @@ func scheduler_reducer_goroutine() {
 								for ; j < current_slice_size || el.Next() != nil; j += 1 {
 									value := el.Value.(map[string]*Server)
 									keys[el.Key.(string)] = value
+									InfoLoggerPtr.Println("LOO")
 								}
+								InfoLoggerPtr.Println("END LOOP")
 								if j < current_slice_size && el.Next() == nil {
 									ErrorLoggerPtr.Fatal("There are less keys than expected.")
 								}
