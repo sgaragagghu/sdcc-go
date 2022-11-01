@@ -329,7 +329,7 @@ func scheduler_mapper_goroutine() {
 func iteration_algorithm_clustering_deep_equal(a map[string]interface{}, b map[string]interface{}) (bool) {
 
 	if len(a) != len(b) {
-		WarningLoggerPtr.Println("Lengths are supposed to be equal!")
+		WarningLoggerPtr.Println("Lengths are supposed to be equal! a", len(a), "b", len(b))
 		return false
 	}
 
@@ -369,13 +369,11 @@ func iteration_algorithm_clustering_deep_equal(a map[string]interface{}, b map[s
 func iteration_algorithm_clustering(task_ptr *task, new_task_ptr_ptr **task, keys_x_values map[string]interface{}) (bool) {
 
 	if task_ptr.iteration_algorithm_parameters == nil {
-		InfoLoggerPtr.Println(" TODO delete me1 ")
 		task_ptr.iteration_algorithm_parameters = make([]interface{}, 0)
 	}
 
 	if len(task_ptr.iteration_algorithm_parameters.([]interface{})) == 0 {
 		task_ptr.iteration_algorithm_parameters = append(task_ptr.iteration_algorithm_parameters.([]interface{}), keys_x_values)
-		InfoLoggerPtr.Println(" TODO delete me2 ")
 	} else {
 		old_keys_x_values := task_ptr.iteration_algorithm_parameters.([]interface{})[0].(map[string]interface{})
 
@@ -389,6 +387,8 @@ func iteration_algorithm_clustering(task_ptr *task, new_task_ptr_ptr **task, key
 			}
 			return true
 		}
+
+		task_ptr.iteration_algorithm_parameters.([]interface{})[0] = keys_x_values
 	}
 
 	for index_string, value := range keys_x_values {
@@ -590,13 +590,13 @@ func scheduler_reducer_goroutine() {
 							{
 								j := 0
 								el := task_ptr.keys_x_servers.Front()
-								for ; j < current_slice_size || el.Next() != nil; j += 1 {
+								//InfoLoggerPtr.Println("size", current_slice_size)
+								for ; j < current_slice_size || el != nil; j += 1 {
 									value := el.Value.(map[string]*Server)
 									keys[el.Key.(string)] = value
-									InfoLoggerPtr.Println("LOO")
+									el = el.Next()
 								}
-								InfoLoggerPtr.Println("END LOOP")
-								if j < current_slice_size && el.Next() == nil {
+								if j < current_slice_size && el == nil {
 									ErrorLoggerPtr.Fatal("There are less keys than expected.")
 								}
 							}
