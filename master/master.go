@@ -69,7 +69,7 @@ func task_injector_goroutine() { // TODO make a jsonrpc interface to send tasks 
 
 
 	iteration_parameters := make([]interface{}, 1)
-	parameters[0] =  2 // max_diff (percentage)
+	iteration_parameters[0] =  1 // max_diff (percentage)
 
 
 /*
@@ -86,8 +86,10 @@ func task_injector_goroutine() { // TODO make a jsonrpc interface to send tasks 
 
 	// TODO MOVE TO initialization_algorithm_clustering FUNCTION (TO DO!)
 	resource_size := Get_file_size(task_ptr.resource_link)
-	offsets := make([][2]float64, task_ptr.map_algorithm_parameters.([]interface{})[0].(int))
+	offsets := make([][]float64, task_ptr.map_algorithm_parameters.([]interface{})[0].(int))
+
 	for i, _ := range offsets {
+		offsets[i] = make ([]float64, 2)
 		download_size := int(math.Abs(((float64(resource_size) / float64(task_ptr.mappers_amount)) / 100) * float64(task_ptr.margin))) // TODO check overflow
 		// TODO check possible overflow
 		offset := rand.Intn(int(resource_size) - download_size) // TODO check seed
@@ -424,7 +426,7 @@ func iteration_algorithm_clustering_deep_equal(a map[string]interface{}, b map[s
 
 	}*/
 
-	return true
+	return false
 }
 
 func iteration_algorithm_clustering(task_ptr *task, new_task_ptr_ptr **task, keys_x_values map[string]interface{}) (bool) {
@@ -436,15 +438,14 @@ func iteration_algorithm_clustering(task_ptr *task, new_task_ptr_ptr **task, key
 	if len(task_ptr.iteration_algorithm_parameters.([]interface{})) == 1 {
 		task_ptr.iteration_algorithm_parameters = append(task_ptr.iteration_algorithm_parameters.([]interface{}), keys_x_values)
 	} else {
-		old_keys_x_values := task_ptr.iteration_algorithm_parameters.([]interface{})[0].(map[string]interface{})
+		old_keys_x_values := task_ptr.iteration_algorithm_parameters.([]interface{})[1].(map[string]interface{})
 
 		if iteration_algorithm_clustering_deep_equal(old_keys_x_values, keys_x_values, task_ptr.iteration_algorithm_parameters.([]interface{})[0].(int)) {
 			InfoLoggerPtr.Println("Fixpoint found, iteration concluded")
 			for key, key_value_o := range keys_x_values {
-				key_value := key_value_o.(map[string]struct{})
-				for index, _ := range key_value {
-					InfoLoggerPtr.Println("key", key, "value", index)
-				}
+				key_value := key_value_o.([]float64)
+				InfoLoggerPtr.Println("key", key, "value", key_value)
+
 			}
 			return true
 		}
