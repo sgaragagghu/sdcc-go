@@ -19,7 +19,7 @@ import (
 	"bufio"
 	"io"
 	"math"
-	"errors"
+//	"errors"
 
 	"github.com/elliotchance/orderedmap"
 )
@@ -125,10 +125,10 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 	// TODO check possible overflow
 	load_ptr := Http_download(job_ptr.Resource_link, job_ptr.Begin, job_ptr.Begin + int64(math.Abs(float64((job_ptr.End - job_ptr.Begin)) * ((100 + float64(job_ptr.Margin))/100))))
 
-	actual_begin, err := get_actual_begin(load_ptr, job_ptr.Separate_entries)
+	actual_begin, err := Get_actual_begin(load_ptr, job_ptr.Separate_entries)
 	if err != nil { ErrorLoggerPtr.Fatal("get_actual_begin error:", err) }
 
-	actual_end, err := get_actual_end(load_ptr, job_ptr.Separate_entries, job_ptr.End - job_ptr.Begin)
+	actual_end, err := Get_actual_end(load_ptr, job_ptr.Separate_entries, job_ptr.End - job_ptr.Begin)
 	if err != nil { ErrorLoggerPtr.Fatal("get_actual_end error:", err) }
 
 	//InfoLoggerPtr.Println("Actual begin:", actual_begin, "actual end:", actual_end)

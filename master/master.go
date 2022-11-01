@@ -13,8 +13,8 @@ import (
 	"math"
 	"math/rand"
 	"strconv"
-//	"bytes"
-//	"bufio"
+	"bytes"
+	"bufio"
 
 	"github.com/elliotchance/orderedmap"
 )
@@ -28,7 +28,7 @@ type task struct {
 	separate_entries byte
 	separate_properties byte
 	properties_amount int8
-	initialization_algoritm string
+	initialization_algorithm string
 	map_algorithm string
 	map_algorithm_parameters interface{}
 //	shuffle_algorithm string
@@ -81,18 +81,18 @@ func task_injector_goroutine() { // TODO make a jsonrpc interface to send tasks 
 	parameters_ptr.PushFront([]int{3, 3}) // u_3
 */
 	task_ptr := &task{-1, -1, "https://raw.githubusercontent.com/sgaragagghu/sdcc-clustering-datasets/master/sdcc/2d-4c.csv", 1, 10,
-		'\n', ',', 2, "clustering", "clustering", parameters, 1, "clustering", nil, "clustering", iteration_paremters, nil}
+		'\n', ',', 2, "clustering", "clustering", parameters, 1, "clustering", nil, "clustering", iteration_parameters, nil}
 
 
 	// TODO MOVE TO initialization_algorithm_clustering FUNCTION (TO DO!)
 	resource_size := Get_file_size(task_ptr.resource_link)
-	offsets := make([][2]float64, task_ptr.map_parameters[0])
-	for i, v := range offsets {
-		download_size := int(math.Abs(((float64(keys_amount) / float64(reducers_amount)) / 100) * task_ptr.margin)) // TODO check overflow
+	offsets := make([][2]float64, task_ptr.map_algorithm_parameters.([]interface{})[0].(int))
+	for i, _ := range offsets {
+		download_size := int(math.Abs(((float64(resource_size) / float64(task_ptr.mappers_amount)) / 100) * float64(task_ptr.margin))) // TODO check overflow
 		// TODO check possible overflow
-		offset := rand.Intn(resource_size - download_size) // TODO check seed
+		offset := rand.Intn(int(resource_size) - download_size) // TODO check seed
 
-		load_ptr := Http_download(task_ptr.resource_link, offset, offset + download_size))
+		load_ptr := Http_download(task_ptr.resource_link, int64(offset), int64(offset + download_size))
 
 		actual_begin, err := Get_actual_begin(load_ptr, task_ptr.separate_entries)
 		if err != nil { ErrorLoggerPtr.Fatal("get_actual_begin error:", err) }
@@ -100,26 +100,28 @@ func task_injector_goroutine() { // TODO make a jsonrpc interface to send tasks 
 		actual_end, err := Get_actual_end(load_ptr, task_ptr.separate_entries, actual_begin)
 		if err != nil { ErrorLoggerPtr.Fatal("get_actual_end error:", err) }
 
-		//InfoLoggerPtr.Println("Actual begin:", actual_begin, "actual end:", actual_end)
+		InfoLoggerPtr.Println("Actual begin:", actual_begin, "actual end:", actual_end)
 
 		if actual_begin == actual_end { ErrorLoggerPtr.Fatal("Unexpected error") }
 
 
-		reader := bytes.NewReader(load)
+		reader := bytes.NewReader((*load_ptr)[actual_begin:])
 		buffered_read := bufio.NewReader(reader)
 		var char byte = 0
-
+		j := 1
+		s := ""
+		full_s := ""
 		for char, err = buffered_read.ReadByte(); err == nil; char, err = buffered_read.ReadByte() {
-			//InfoLoggerPtr.Println(string(char))
+			InfoLoggerPtr.Println(string(char))
 			if char == task_ptr.separate_properties {
-				if j < (task_ptr.properties_amount)  {
+				if j < int(task_ptr.properties_amount)  {
 					offsets[i][j - 1], _ = strconv.ParseFloat(s, 64) //TODO check the error
 					full_s = s + string(task_ptr.separate_properties)
 					s = ""
 					j += 1
 				} else { ErrorLoggerPtr.Fatal("Parsing failed") }
 			} else if char == task_ptr.separate_entries {
-				if j == (task_ptr.properties_amount) {
+				if j == int(task_ptr.properties_amount) {
 					offsets[i][j - 1], _ = strconv.ParseFloat(s, 64) // TODO check the error
 					full_s += s + string(task_ptr.separate_entries)
 					break
@@ -132,7 +134,7 @@ func task_injector_goroutine() { // TODO make a jsonrpc interface to send tasks 
 	}
 
 	for i, v := range offsets {
-		map_parameters[i + 1] = v
+		task_ptr.map_algorithm_parameters.([]interface{})[i + 1] = v
 	}
 
 	select {
@@ -402,7 +404,7 @@ func iteration_algorithm_clustering_deep_equal(a map[string]interface{}, b map[s
 		}
 
 		for i2, v2 := range v {
-			if math.Abs(v2 - b_i[i2]) > (v2 / 100) * max_diff { return false }
+			if math.Abs(v2 - b_i[i2]) > (v2 / 100) * float64(max_diff) { return false }
 		}
 
 	}
@@ -436,7 +438,7 @@ func iteration_algorithm_clustering(task_ptr *task, new_task_ptr_ptr **task, key
 	} else {
 		old_keys_x_values := task_ptr.iteration_algorithm_parameters.([]interface{})[0].(map[string]interface{})
 
-		if iteration_algorithm_clustering_deep_equal(old_keys_x_values, keys_x_valuesi, task_ptr.iteration_algorithm_parameters.([]interface{})[0].(int)) {
+		if iteration_algorithm_clustering_deep_equal(old_keys_x_values, keys_x_values, task_ptr.iteration_algorithm_parameters.([]interface{})[0].(int)) {
 			InfoLoggerPtr.Println("Fixpoint found, iteration concluded")
 			for key, key_value_o := range keys_x_values {
 				key_value := key_value_o.(map[string]struct{})
@@ -481,9 +483,9 @@ func iteration_algorithm_clustering(task_ptr *task, new_task_ptr_ptr **task, key
 	}
 
 	*new_task_ptr_ptr = &task{-1, task_ptr.origin_id, task_ptr.resource_link, task_ptr.mappers_amount, task_ptr.margin,
-		task_ptr.separate_entries, task_ptr.separate_properties, task_ptr.properties_amount, task_ptr.map_algorithm,
-		task_ptr.map_algorithm_parameters, task_ptr.reducers_amount, task_ptr.reduce_algorithm, task_ptr.reduce_algorithm_parameters,
-		task_ptr.iteration_algorithm, task_ptr.iteration_algorithm_parameters, nil}
+		task_ptr.separate_entries, task_ptr.separate_properties, task_ptr.properties_amount, task_ptr.initialization_algorithm,
+		task_ptr.map_algorithm, task_ptr.map_algorithm_parameters, task_ptr.reducers_amount, task_ptr.reduce_algorithm,
+		task_ptr.reduce_algorithm_parameters, task_ptr.iteration_algorithm, task_ptr.iteration_algorithm_parameters, nil}
 	InfoLoggerPtr.Println("Fixpoint not found yet, new_task created")
 
 	for index, index_value_o := range task_ptr.map_algorithm_parameters.([]interface{})[1:] {
