@@ -11,6 +11,7 @@ import (
 	"encoding/gob"
 	//"container/list"
 	"math"
+	"math/rand"
 	"strconv"
 //	"bytes"
 //	"bufio"
@@ -27,6 +28,7 @@ type task struct {
 	separate_entries byte
 	separate_properties byte
 	properties_amount int8
+	initialization_algoritm string
 	map_algorithm string
 	map_algorithm_parameters interface{}
 //	shuffle_algorithm string
@@ -66,6 +68,10 @@ func task_injector_goroutine() { // TODO make a jsonrpc interface to send tasks 
 	parameters[4] = []float64{3, 3} // u_3
 
 
+	iteration_parameters := make([]interface{}, 1)
+	parameters[0] =  2 // max_diff (percentage)
+
+
 /*
 	parameters_ptr := new(list.List)
 	parameters_ptr.PushFront(4) // k
@@ -74,10 +80,63 @@ func task_injector_goroutine() { // TODO make a jsonrpc interface to send tasks 
 	parameters_ptr.PushFront([]int{2, 2}) // u_2
 	parameters_ptr.PushFront([]int{3, 3}) // u_3
 */
-	task := task{-1, -1, "https://raw.githubusercontent.com/sgaragagghu/sdcc-clustering-datasets/master/sdcc/2d-4c.csv", 1, 10,
-		'\n', ',', 2, "clustering", parameters, 1, "clustering", nil, "clustering", nil, nil}
+	task_ptr := &task{-1, -1, "https://raw.githubusercontent.com/sgaragagghu/sdcc-clustering-datasets/master/sdcc/2d-4c.csv", 1, 10,
+		'\n', ',', 2, "clustering", "clustering", parameters, 1, "clustering", nil, "clustering", iteration_paremters, nil}
+
+
+	// TODO MOVE TO initialization_algorithm_clustering FUNCTION (TO DO!)
+	resource_size := Get_file_size(task_ptr.resource_link)
+	offsets := make([][2]float64, task_ptr.map_parameters[0])
+	for i, v := range offsets {
+		download_size := int(math.Abs(((float64(keys_amount) / float64(reducers_amount)) / 100) * task_ptr.margin)) // TODO check overflow
+		// TODO check possible overflow
+		offset := rand.Intn(resource_size - download_size) // TODO check seed
+
+		load_ptr := Http_download(task_ptr.resource_link, offset, offset + download_size))
+
+		actual_begin, err := Get_actual_begin(load_ptr, task_ptr.separate_entries)
+		if err != nil { ErrorLoggerPtr.Fatal("get_actual_begin error:", err) }
+
+		actual_end, err := Get_actual_end(load_ptr, task_ptr.separate_entries, actual_begin)
+		if err != nil { ErrorLoggerPtr.Fatal("get_actual_end error:", err) }
+
+		//InfoLoggerPtr.Println("Actual begin:", actual_begin, "actual end:", actual_end)
+
+		if actual_begin == actual_end { ErrorLoggerPtr.Fatal("Unexpected error") }
+
+
+		reader := bytes.NewReader(load)
+		buffered_read := bufio.NewReader(reader)
+		var char byte = 0
+
+		for char, err = buffered_read.ReadByte(); err == nil; char, err = buffered_read.ReadByte() {
+			//InfoLoggerPtr.Println(string(char))
+			if char == task_ptr.separate_properties {
+				if j < (task_ptr.properties_amount)  {
+					offsets[i][j - 1], _ = strconv.ParseFloat(s, 64) //TODO check the error
+					full_s = s + string(task_ptr.separate_properties)
+					s = ""
+					j += 1
+				} else { ErrorLoggerPtr.Fatal("Parsing failed") }
+			} else if char == task_ptr.separate_entries {
+				if j == (task_ptr.properties_amount) {
+					offsets[i][j - 1], _ = strconv.ParseFloat(s, 64) // TODO check the error
+					full_s += s + string(task_ptr.separate_entries)
+					break
+				} else { ErrorLoggerPtr.Fatal("Parsing failed") }
+			} else {
+				s += string(char) // TODO Try to use a buffer like bytes.NewBufferString(ret) for better performances
+			}
+		}
+
+	}
+
+	for i, v := range offsets {
+		map_parameters[i + 1] = v
+	}
+
 	select {
-	case Task_mapper_channel <- &task:
+	case Task_mapper_channel <- task_ptr:
 		select {
 		case New_task_mapper_event_channel <- struct{}{}:
 		default:
@@ -285,7 +344,7 @@ func scheduler_mapper_goroutine() {
 					resource_size := Get_file_size(task_ptr.resource_link)
 					mappers_amount := MinOf_int32(task_ptr.mappers_amount, int32(len(idle_mapper_hashmap))) // TODO check overflow
 					if mappers_amount == 0 { mappers_amount = 1 }
-					slice_size := int64(math.Abs(float64(resource_size) / float64(mappers_amount)))
+					slice_size := int64(math.Abs(float64(resource_size) / float64(mappers_amount))) // TODO math.Abs, does it make sense here ?
 					jobs := make([]*Job, mappers_amount)
 					{
 						var i int32 = 0
@@ -326,7 +385,7 @@ func scheduler_mapper_goroutine() {
 }
 
 
-func iteration_algorithm_clustering_deep_equal(a map[string]interface{}, b map[string]interface{}) (bool) {
+func iteration_algorithm_clustering_deep_equal(a map[string]interface{}, b map[string]interface{}, max_diff int) (bool) {
 
 	if len(a) != len(b) {
 		WarningLoggerPtr.Println("Lengths are supposed to be equal! a", len(a), "b", len(b))
@@ -343,7 +402,7 @@ func iteration_algorithm_clustering_deep_equal(a map[string]interface{}, b map[s
 		}
 
 		for i2, v2 := range v {
-			if v2 != b_i[i2] { return false }
+			if math.Abs(v2 - b_i[i2]) > (v2 / 100) * max_diff { return false }
 		}
 
 	}
@@ -367,17 +426,17 @@ func iteration_algorithm_clustering_deep_equal(a map[string]interface{}, b map[s
 }
 
 func iteration_algorithm_clustering(task_ptr *task, new_task_ptr_ptr **task, keys_x_values map[string]interface{}) (bool) {
-
+/*
 	if task_ptr.iteration_algorithm_parameters == nil {
 		task_ptr.iteration_algorithm_parameters = make([]interface{}, 0)
 	}
-
-	if len(task_ptr.iteration_algorithm_parameters.([]interface{})) == 0 {
+*/
+	if len(task_ptr.iteration_algorithm_parameters.([]interface{})) == 1 {
 		task_ptr.iteration_algorithm_parameters = append(task_ptr.iteration_algorithm_parameters.([]interface{}), keys_x_values)
 	} else {
 		old_keys_x_values := task_ptr.iteration_algorithm_parameters.([]interface{})[0].(map[string]interface{})
 
-		if iteration_algorithm_clustering_deep_equal(old_keys_x_values, keys_x_values) {
+		if iteration_algorithm_clustering_deep_equal(old_keys_x_values, keys_x_valuesi, task_ptr.iteration_algorithm_parameters.([]interface{})[0].(int)) {
 			InfoLoggerPtr.Println("Fixpoint found, iteration concluded")
 			for key, key_value_o := range keys_x_values {
 				key_value := key_value_o.(map[string]struct{})
@@ -388,7 +447,7 @@ func iteration_algorithm_clustering(task_ptr *task, new_task_ptr_ptr **task, key
 			return true
 		}
 
-		task_ptr.iteration_algorithm_parameters.([]interface{})[0] = keys_x_values
+		task_ptr.iteration_algorithm_parameters.([]interface{})[1] = keys_x_values
 	}
 
 	for index_string, value := range keys_x_values {

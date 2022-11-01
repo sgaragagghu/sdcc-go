@@ -48,39 +48,6 @@ func heartbeat_goroutine(client *rpc.Client) {
 
 }
 
-func get_actual_begin(load_ptr *[]byte, separate_entries byte) (int64, error) {
-	reader := bytes.NewReader(*load_ptr)
-	buffered_read := bufio.NewReader(reader)
-	found := false
-	var i int64 = 0
-	// TODO, see the next function
-	for char, err := buffered_read.ReadByte(); err == nil && found == false; char, err = buffered_read.ReadByte() {
-		if char == separate_entries { found = true }
-		i += 1
-	}
-	if found == true {
-		return i, nil
-	} else { return i, errors.New("Separate entries not found") }
-}
-
-func get_actual_end(load_ptr *[]byte, separate_entries byte, offset int64) (int64, error) {
-	reader := bytes.NewReader((*load_ptr)[offset - 1:]) //TODO check error
-	buffered_read := bufio.NewReader(reader)
-	found := false
-	var i int64 = -1
-	// TODO check if the buffer the fox stopped cause the buffer is empty but not the byte array
-	for char, err := buffered_read.ReadByte(); err == nil; char, err = buffered_read.ReadByte() { // TODO check the error if != EOF
-		if char == separate_entries {
-			found = true
-			break
-		}
-		i += 1
-	}
-	if found == true {
-		return offset + i, nil
-	} else { return offset + i, errors.New("Separate entries not found") }
-}
-
 func mapper_algorithm_clustering(properties_amount int, keys *[]string, separate_entries byte, separate_properties byte, parameters []interface{}, load []byte) (map[string]interface{}) {
 
 	res := make(map[string]interface{})
@@ -122,19 +89,21 @@ func mapper_algorithm_clustering(properties_amount int, keys *[]string, separate
 				s += string(char) // TODO Try to use a buffer like bytes.NewBufferString(ret) for better performances
 			}
 		}
+
+		if err != nil {
+			if err == io.EOF {
+				break
+			} else {
+				ErrorLoggerPtr.Fatal(err)
+			}
+		}
+
 		min_index := 0
 		var min float64 = -1
 		for i := k - 1 ; i >= 0; i -= 1 {
 			if distance := Euclidean_distance(properties_amount, u_vec[i], point); distance < min || min == -1 {
 				min_index = i
 				min = distance
-			}
-		}
-		if err != nil {
-			if err == io.EOF {
-				break
-			} else {
-				ErrorLoggerPtr.Fatal(err)
 			}
 		}
 		min_index_s := strconv.Itoa(min_index)

@@ -13,6 +13,40 @@ import (
 
 type StubMapping map[string]interface{}
 
+
+func Get_actual_begin(load_ptr *[]byte, separate_entries byte) (int64, error) {
+	reader := bytes.NewReader(*load_ptr)
+	buffered_read := bufio.NewReader(reader)
+	found := false
+	var i int64 = 0
+	// TODO, see the next function
+	for char, err := buffered_read.ReadByte(); err == nil && found == false; char, err = buffered_read.ReadByte() {
+		if char == separate_entries { found = true }
+		i += 1
+	}
+	if found == true {
+		return i, nil
+	} else { return i, errors.New("Separate entries not found") }
+}
+
+func Get_actual_end(load_ptr *[]byte, separate_entries byte, offset int64) (int64, error) {
+	reader := bytes.NewReader((*load_ptr)[offset - 1:]) //TODO check error
+	buffered_read := bufio.NewReader(reader)
+	found := false
+	var i int64 = -1
+	// TODO check if the buffer the fox stopped cause the buffer is empty but not the byte array
+	for char, err := buffered_read.ReadByte(); err == nil; char, err = buffered_read.ReadByte() { // TODO check the error if != EOF
+		if char == separate_entries {
+			found = true
+			break
+		}
+		i += 1
+	}
+	if found == true {
+		return offset + i, nil
+	} else { return offset + i, errors.New("Separate entries not found") }
+}
+
 func Welford_one_pass(mean []float64, sample []float64, nsamples float64) ([]float64) {
 	if(nsamples > 0) {
 		for i, _ := range mean {
