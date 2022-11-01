@@ -195,15 +195,15 @@ func prepare_and_send_job_full_goroutine(request_ptr *Request, jobs_hashmap map[
 
 	keys_x_values := make(map[string]interface{})
 
-	for i, v := range jobs_hashmap {
+	for _, v := range jobs_hashmap {
 		for _, key := range request_ptr.Body.([]string)[1:] {
 			if res, ok := v.Result[key]; ok {
-				value, ok2 := keys_x_values[i]
+				value, ok2 := keys_x_values[key]
 				if !ok2 {
 					keys_x_values[key] = res
 				} else {
-					for index2, value3 := range value.(map[string]interface{}) { // bad, i should pass an JOIN function instead of this for generalization.
-						keys_x_values[key].(map[string]interface{})[index2] = value3
+					for index2, value3 := range value.(map[string]struct{}) { // bad, i should pass an JOIN function instead of this for generalization.
+						keys_x_values[key].(map[string]struct{})[index2] = value3
 					}
 				}
 			}
