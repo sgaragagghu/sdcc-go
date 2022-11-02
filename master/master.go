@@ -99,22 +99,22 @@ func task_injector_goroutine() { // TODO make a jsonrpc interface to send tasks 
 		actual_begin, err := Get_actual_begin(load_ptr, task_ptr.separate_entries)
 		if err != nil { ErrorLoggerPtr.Fatal("get_actual_begin error:", err) }
 
-		actual_end, err := Get_actual_end(load_ptr, task_ptr.separate_entries, actual_begin)
+		actual_end, err := Get_actual_end(load_ptr, task_ptr.separate_entries, actual_begin + 1)
 		if err != nil { ErrorLoggerPtr.Fatal("get_actual_end error:", err) }
 
-		InfoLoggerPtr.Println("Actual begin:", actual_begin, "actual end:", actual_end)
+		//InfoLoggerPtr.Println("Actual begin:", actual_begin, "actual end:", actual_end)
 
 		if actual_begin == actual_end { ErrorLoggerPtr.Fatal("Unexpected error") }
 
 
-		reader := bytes.NewReader((*load_ptr)[actual_begin:])
+		reader := bytes.NewReader((*load_ptr)[actual_begin:actual_end])
 		buffered_read := bufio.NewReader(reader)
 		var char byte = 0
 		j := 1
 		s := ""
 		full_s := ""
 		for char, err = buffered_read.ReadByte(); err == nil; char, err = buffered_read.ReadByte() {
-			InfoLoggerPtr.Println(string(char))
+			//InfoLoggerPtr.Println(string(char))
 			if char == task_ptr.separate_properties {
 				if j < int(task_ptr.properties_amount)  {
 					offsets[i][j - 1], _ = strconv.ParseFloat(s, 64) //TODO check the error
