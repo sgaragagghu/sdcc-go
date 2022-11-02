@@ -26,6 +26,7 @@ import (
 
 var (
 	server *Server
+	master *Server
 	stub_storage StubMapping
 )
 
@@ -123,27 +124,6 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 	default:
 		ErrorLoggerPtr.Fatal("Finished job channel full.")
 	}
-}
-
-func send_completed_job_goroutine(job_ptr *Job) {
-
-	// TODO probably it is needed to use the already connection which is in place for the heartbeat
-
-	// connect to server via rpc tcp
-	client, err := rpc.Dial("tcp", MASTER_IP + ":" + MASTER_PORT)
-	defer client.Close()
-	if err != nil {
-		ErrorLoggerPtr.Fatal(err)
-	}
-
-	var reply int
-
-	err = client.Call("Master_handler.Job_mapper_completed", job_ptr, &reply)
-	if err != nil {
-		ErrorLoggerPtr.Fatal(err)
-	}
-	InfoLoggerPtr.Println("Completed job sent to the master.")
-
 }
 
 func send_job_full_goroutine(server *Server, load *Request, log_message string) {
@@ -251,7 +231,8 @@ func task_manager_goroutine() {
 			// TODO POBRABILE BUG QUI
 			job_light := *job_finished_ptr
 			job_light.Result = nil
-			go send_completed_job_goroutine(&job_light) // TODO add and manage errors
+			// TODO add and manage erros
+			go Rpc_job_goroutine(master, &job_light, "Master_handler.Job_mapper_completed", "Completed job sent to the master.")
 
 			state = IDLE
 
@@ -337,6 +318,7 @@ func init() {
 	}
 
 	server = &Server{id, ip, MAPPER_PORT, time.Now(), nil, "MAPPER"}
+	master = &Server{"", MASTER_IP, MASTER_PORT, time.Now(), nil, "MASTER"}
 }
 
 func Mapper_main() {
