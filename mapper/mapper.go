@@ -64,31 +64,8 @@ func mapper_algorithm_clustering(properties_amount int, keys *[]string, separate
 	buffered_read := bufio.NewReader(reader)
 
 	for {
-		j := 1
-		s := ""
-		full_s := ""
 		point := make([]float64, properties_amount)
-		var err error = nil
-		var char byte = 0
-		for char, err = buffered_read.ReadByte(); err == nil; char, err = buffered_read.ReadByte() {
-			//InfoLoggerPtr.Println(string(char))
-			if char == separate_properties {
-				if j < (properties_amount)  {
-					point[j - 1], _ = strconv.ParseFloat(s, 64) //TODO check the error
-					full_s = s + string(separate_properties)
-					s = ""
-					j += 1
-				} else { ErrorLoggerPtr.Fatal("Parsing failed") }
-			} else if char == separate_entries {
-				if j == (properties_amount) {
-					point[j - 1], _ = strconv.ParseFloat(s, 64) // TODO check the error
-					full_s += s + string(separate_entries)
-					break
-				} else { ErrorLoggerPtr.Fatal("Parsing failed") }
-			} else {
-				s += string(char) // TODO Try to use a buffer like bytes.NewBufferString(ret) for better performances
-			}
-		}
+		full_s, err := Parser_simple(point, buffered_read, separate_properties, separate_entries)
 
 		if err != nil {
 			if err == io.EOF {

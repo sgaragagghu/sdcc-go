@@ -16,6 +16,32 @@ import (
 type StubMapping map[string]interface{}
 
 
+func Parser_simple(point []float64, buffered_read *bufio.Reader, separate_properties byte, separate_entries byte) (full_s string, err error) {
+
+	s := ""
+	j := 1
+	for char, err := buffered_read.ReadByte(); err == nil; char, err = buffered_read.ReadByte() {
+		//InfoLoggerPtr.Println(string(char))
+		if char == separate_properties {
+			if j < len(point)  {
+				point[j - 1], _ = strconv.ParseFloat(s, 64) //TODO check the error
+				full_s = s + string(separate_properties)
+				s = ""
+				j += 1
+			} else { ErrorLoggerPtr.Fatal("Parsing failed") }
+		} else if char == separate_entries {
+			if j == len(point) {
+				point[j - 1], _ = strconv.ParseFloat(s, 64) // TODO check the error
+				full_s += s + string(separate_entries)
+				break
+			} else { ErrorLoggerPtr.Fatal("Parsing failed") }
+		} else {
+			s += string(char) // TODO Try to use a buffer like bytes.NewBufferString(ret) for better performances
+		}
+	}
+	return
+}
+
 func Get_actual_begin(load_ptr *[]byte, separate_entries byte) (int64, error) {
 	reader := bytes.NewReader(*load_ptr)
 	buffered_read := bufio.NewReader(reader)
