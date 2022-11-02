@@ -126,26 +126,6 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 	}
 }
 
-func send_job_full_goroutine(server *Server, load *Request, log_message string) {
-
-	// TODO probably it is needed to use the already connection which is in place for the heartbeat
-
-	// connect to server via rpc tcp
-	client, err := rpc.Dial("tcp", server.Ip + ":" + server.Port)
-	defer client.Close()
-	if err != nil {
-		ErrorLoggerPtr.Fatal(err)
-	}
-
-	var reply int
-
-	err = client.Call("Reducer_handler.Send_job_full", load, &reply)
-	if err != nil {
-		ErrorLoggerPtr.Fatal(err)
-	}
-	InfoLoggerPtr.Println(log_message)
-}
-
 func prepare_and_send_job_full_goroutine(request_ptr *Request, jobs_hashmap map[string]*Job) {
 
 	InfoLoggerPtr.Println("Preparing keys", request_ptr.Body.([]string)[1:],"full jobs of task", request_ptr.Body.([]string)[0], "for server", request_ptr.Sender.Id)
@@ -168,8 +148,9 @@ func prepare_and_send_job_full_goroutine(request_ptr *Request, jobs_hashmap map[
 	}
 
 	req := &Request{server, request_ptr.Sender, 0, time.Now(), keys_x_values}
+	go Rpc_request_goroutine(req.Receiver, req, "Reducer_handler.Send_job_full",
+		"Sent job full " + request_ptr.Body.([]string)[0] + " to the reducer " + req.Receiver.Id)
 
-	go send_job_full_goroutine(req.Receiver, req, "Sent job full " + request_ptr.Body.([]string)[0] + " to the reducer " + req.Receiver.Id)
 }
 
 func task_manager_goroutine() {

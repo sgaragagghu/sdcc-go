@@ -2,7 +2,7 @@ package rpc_mapper
 
 import (
 	. "../share"
-	"time"
+//	"time"
 //	. "../rpc_master"
 //	"container/list"
 )
@@ -13,14 +13,6 @@ var (
 	Job_channel chan *Job
 	Job_full_request_channel chan *Request
 )
-
-type Request struct {
-	Sender *Server
-	Receiver *Server
-	Tries int
-	Time time.Time
-	Body interface{}
-}
 
 // create a type to get an interface
 type Mapper_handler int

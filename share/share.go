@@ -36,6 +36,14 @@ var (
 	ErrorLoggerPtr		*log.Logger
 )
 
+type Request struct {
+	Sender *Server
+	Receiver *Server
+	Tries int
+	Time time.Time
+	Body interface{}
+}
+
 type Server struct {
 	Id string
 	Ip string
@@ -71,6 +79,27 @@ func init() {
 	WarningLoggerPtr = log.New(os.Stdout, "WARNING: ", log.Ldate|log.Ltime|log.Lshortfile)
 	ErrorLoggerPtr = log.New(os.Stderr, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
 
+}
+
+
+func Rpc_request_goroutine(server *Server, load *Request, method string,  log_message string) {
+
+	// TODO probably it is needed to use the already connection which is in place for the heartbeat
+
+	// connect to server via rpc tcp
+	client, err := rpc.Dial("tcp", server.Ip + ":" + server.Port)
+	defer client.Close()
+	if err != nil {
+		ErrorLoggerPtr.Fatal(err)
+	}
+
+	var reply int
+
+	err = client.Call(method, load, &reply)
+	if err != nil {
+		ErrorLoggerPtr.Fatal(method, "error", err)
+	}
+	InfoLoggerPtr.Println(log_message)
 }
 
 

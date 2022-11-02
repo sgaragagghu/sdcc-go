@@ -2,7 +2,7 @@ package rpc_reducer
 
 import (
 	. "../share"
-	. "../rpc_mapper"
+//	. "../rpc_mapper"
 //	"container/list"
 )
 
