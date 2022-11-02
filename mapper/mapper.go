@@ -65,8 +65,8 @@ func mapper_algorithm_clustering(properties_amount int, keys *[]string, separate
 
 	for {
 		point := make([]float64, properties_amount)
-		full_s, err := Parser_simple(point, buffered_read, separate_properties, separate_entries)
-
+		full_s, err := Parser_simple(&point, buffered_read, separate_properties, separate_entries)
+		//InfoLoggerPtr.Println("string", full_s, "point", point, "error", err)
 		if err != nil {
 			if err == io.EOF {
 				break
