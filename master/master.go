@@ -56,35 +56,8 @@ var (
 	stub_storage StubMapping
 )
 
-func task_injector_goroutine() { // TODO make a jsonrpc interface to send tasks from a browser or curl 
-
-	time.Sleep(60 * SECOND)
-
-	parameters := make([]interface{}, 5)
-	parameters[0] = 4 // k
-	parameters[1] = []float64{0, 0} // u_0
-	parameters[2] = []float64{1, 1} // u_1
-	parameters[3] = []float64{2, 2} // u_2
-	parameters[4] = []float64{3, 3} // u_3
-
-
-	iteration_parameters := make([]interface{}, 1)
-	iteration_parameters[0] =  1 // max_diff (percentage)
-
-
-/*
-	parameters_ptr := new(list.List)
-	parameters_ptr.PushFront(4) // k
-	parameters_ptr.PushFront([]int{0, 0}) // u_0
-	parameters_ptr.PushFront([]int{1, 1}) // u_1
-	parameters_ptr.PushFront([]int{2, 2}) // u_2
-	parameters_ptr.PushFront([]int{3, 3}) // u_3
-*/
-	task_ptr := &task{-1, -1, "https://raw.githubusercontent.com/sgaragagghu/sdcc-clustering-datasets/master/sdcc/2d-4c.csv", 1, 10,
-		'\n', ',', 2, "clustering", "clustering", parameters, 1, "clustering", nil, "clustering", iteration_parameters, nil}
-
-
-	// TODO MOVE TO initialization_algorithm_clustering FUNCTION (TO DO!)
+func initialization_algorithm_clustering(task_ptr *task) (ret bool) {
+	ret = false
 	resource_size := Get_file_size(task_ptr.resource_link)
 	offsets := make([][]float64, task_ptr.map_algorithm_parameters.([]interface{})[0].(int))
 
@@ -116,6 +89,31 @@ func task_injector_goroutine() { // TODO make a jsonrpc interface to send tasks 
 	for i, v := range offsets {
 		task_ptr.map_algorithm_parameters.([]interface{})[i + 1] = v
 	}
+
+	ret = true
+	return
+}
+
+func task_injector_goroutine() { // TODO make a jsonrpc interface to send tasks from a browser or curl 
+
+	time.Sleep(60 * SECOND)
+
+	parameters := make([]interface{}, 5)
+	parameters[0] = 4 // k
+	parameters[1] = []float64{0, 0} // u_0
+	parameters[2] = []float64{1, 1} // u_1
+	parameters[3] = []float64{2, 2} // u_2
+	parameters[4] = []float64{3, 3} // u_3
+
+
+	iteration_parameters := make([]interface{}, 1)
+	iteration_parameters[0] =  1 // max_diff (percentage)
+
+	task_ptr := &task{-1, -1, "https://raw.githubusercontent.com/sgaragagghu/sdcc-clustering-datasets/master/sdcc/2d-4c.csv", 1, 10,
+		'\n', ',', 2, "clustering", "clustering", parameters, 1, "clustering", nil, "clustering", iteration_parameters, nil}
+
+	// TODO check error and return...
+	/*_, _ := */Call("initialization_algorithm_" + task_ptr.initialization_algorithm, stub_storage, task_ptr)
 
 	select {
 	case Task_mapper_channel <- task_ptr:
@@ -660,6 +658,7 @@ func Master_main() {
 
 	stub_storage = map[string]interface{}{
 		"iteration_algorithm_clustering": iteration_algorithm_clustering,
+		"initialization_algorithm_clustering": initialization_algorithm_clustering,
 		//"funcB": funcB,
 	}
 
