@@ -69,26 +69,10 @@ func reducer_algorithm_clustering(properties_amount int, keys []string, keys_x_v
 		mean := make([]float64, properties_amount)
 		var n_samples float64 = 1
 		for string_point, _ := range value {
-				reader := bytes.NewReader([]byte(string_point))
-				buffered_read := bufio.NewReader(reader)
-				point := make([]float64, properties_amount)
-				j := 1
-				s := ""
-			for char, err := buffered_read.ReadByte(); err == nil; char, err = buffered_read.ReadByte() {
-				//InfoLoggerPtr.Println("char:", string(char))
-				if char == separate_properties || char == separate_entries {
-					if (char == separate_properties && j < properties_amount) ||
-							(char == separate_entries /*&& j <= properties_amount*/ ){
-						point[j - 1], _ = strconv.ParseFloat(s, 64) // TODO check the error
-						//full_s += string(separate_properties) + s
-						s = ""
-						j += 1
-						//if j > properties_amount { break }
-					} else { ErrorLoggerPtr.Fatal("Parsing failed") }
-				} else {
-					s += string(char) // TODO Try to use a buffer like bytes.NewBufferString(ret) for better performances
-				}
-			}
+			reader := bytes.NewReader([]byte(string_point))
+			buffered_read := bufio.NewReader(reader)
+			point := make([]float64, properties_amount)
+			Parser_simple(&point, buffered_read, separate_properties, separate_entries)
 			mean = Welford_one_pass(mean, point, n_samples)
 			n_samples += 1
 		}
