@@ -82,28 +82,6 @@ func reducer_algorithm_clustering(properties_amount int, keys []string, keys_x_v
 	return res
 }
 
-
-func get_job_full_goroutine(request *Request) {
-
-	// TODO probably it is needed to use the already connection which is in place for the heartbeat
-
-	// connect to server via rpc tcp
-	client, err := rpc.Dial("tcp", request.Receiver.Ip + ":" + request.Receiver.Port)
-	defer client.Close()
-	if err != nil {
-		ErrorLoggerPtr.Fatal(err)
-	}
-
-	var reply int
-
-
-	InfoLoggerPtr.Println("Requesting keys", request.Body, "from server", request.Receiver.Id)
-	err = client.Call("Mapper_handler.Get_job_full", &request, &reply)
-	if err != nil {
-		ErrorLoggerPtr.Fatal(err)
-	}
-}
-
 func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 
 	requests_map := orderedmap.NewOrderedMap()
@@ -126,8 +104,10 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 	}
 
 	for el := requests_map.Front(); el != nil; el = el.Next() {
-		el.Value.(*Request).Time = time.Now()
-		go get_job_full_goroutine(el.Value.(*Request))
+		req := el.Value.(*Request)
+		req.Time = time.Now()
+		go Rpc_request_goroutine(req.Receiver, req, "Mapper_handler.Get_job_full",
+			"Requesting keys " + fmt.Sprint(req.Body.([]string)) + " from server " + req.Receiver.Id)
 	}
 
 
