@@ -28,6 +28,7 @@ import (
 
 var (
 	server *Server
+	master *Server
 	stub_storage StubMapping
 )
 
@@ -164,26 +165,6 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 	}
 }
 
-func send_completed_job_goroutine(job_ptr *Job, log_message string) {
-
-	// TODO probably it is needed to use the already connection which is in place for the heartbeat
-
-	// connect to server via rpc tcp
-	client, err := rpc.Dial("tcp", MASTER_IP + ":" + MASTER_PORT)
-	defer client.Close()
-	if err != nil {
-		ErrorLoggerPtr.Fatal(err)
-	}
-
-	var reply int
-
-	err = client.Call("Master_handler.Job_reducer_completed", job_ptr, &reply)
-	if err != nil {
-		ErrorLoggerPtr.Fatal(err)
-	}
-	InfoLoggerPtr.Println(log_message)
-}
-
 func task_manager_goroutine() {
 
 	state := IDLE
@@ -239,8 +220,9 @@ func task_manager_goroutine() {
 					ErrorLoggerPtr.Fatal("ready_event_channel is full.")
 				}
 			}
-
-			go send_completed_job_goroutine(job_finished_ptr, "Sent completed job " + job_finished_ptr.Id + " of task " + job_finished_ptr.Task_id) // TODO add and manage errors
+			// TODO add and manage errors
+			go Rpc_job_goroutine(master, job_finished_ptr, "Master_handler.Job_reducer_completed",
+				"Sent completed job " + job_finished_ptr.Id + " of task " + job_finished_ptr.Task_id)
 
 			state = IDLE
 
@@ -320,6 +302,7 @@ func init() {
 	}
 
 	server = &Server{id, ip, REDUCER_PORT, time.Now(), nil, "REDUCER"}
+	master = &Server{"", MASTER_IP, MASTER_PORT, time.Now(), nil, "MASTER"}
 }
 
 func Reducer_main() {
