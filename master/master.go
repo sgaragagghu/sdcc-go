@@ -131,24 +131,6 @@ func task_injector_goroutine() { // TODO make a jsonrpc interface to send tasks 
 	InfoLoggerPtr.Println("Task correctly injected")
 }
 
-func send_job_goroutine(server_ptr *Server, job_ptr *Job, method string, log_message string) {
-	// connect to mapper via rpc tcp
-	client, err := rpc.Dial("tcp", server_ptr.Ip + ":" + server_ptr.Port)
-	defer client.Close()
-	if err != nil {
-		ErrorLoggerPtr.Fatal(err)
-	}
-
-	var reply int
-
-	err = client.Call(method, job_ptr, &reply)
-	if err != nil {
-		ErrorLoggerPtr.Fatal("Send_job error:", err)
-	}
-	InfoLoggerPtr.Println(log_message)
-
-}
-
 func heartbeat_goroutine() {
 
 	InfoLoggerPtr.Println("Heartbeat_goroutine started.")
@@ -228,7 +210,7 @@ func scheduler_mapper_goroutine() {
 							job_ptr.Server_id = server_id
 							working_mapper_hashmap[server_id] = server_ptr
 							InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to mapper", job_ptr.Server_id)
-							go send_job_goroutine(server_ptr, job_ptr, "Mapper_handler.Send_job",
+							go Rpc_job_goroutine(server_ptr, job_ptr, "Mapper_handler.Send_job",
 								"Sent mapper job " + job_ptr.Id + " task " + job_ptr.Task_id)
 							break
 						}
@@ -253,7 +235,7 @@ func scheduler_mapper_goroutine() {
 				working_mapper_hashmap[add_mapper_ptr.Id] = add_mapper_ptr
 				add_mapper_ptr.Jobs[job_ptr.Id] = job_ptr
 				InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to mapper", job_ptr.Server_id)
-				go send_job_goroutine(add_mapper_ptr, job_ptr, "Mapper_handler.Send_job",
+				go Rpc_job_goroutine(add_mapper_ptr, job_ptr, "Mapper_handler.Send_job",
 					"Sent mapper job " + job_ptr.Id + " task " + job_ptr.Task_id)
 			default:
 				idle_mapper_hashmap[add_mapper_ptr.Id] = add_mapper_ptr
@@ -280,7 +262,7 @@ func scheduler_mapper_goroutine() {
 					job_ptr.Server_id = job_completed_ptr.Server_id
 					InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to mapper", job_ptr.Server_id)
 					mapper_job_map_ptr[job_ptr.Id] = job_ptr
-					go send_job_goroutine(working_mapper_hashmap[job_completed_ptr.Server_id], job_ptr, "Mapper_handler.Send_job",
+					go Rpc_job_goroutine(working_mapper_hashmap[job_completed_ptr.Server_id], job_ptr, "Mapper_handler.Send_job",
 						"Sent mapper job " + job_ptr.Id + " task " + job_ptr.Task_id)
 				default:
 					idle_mapper_hashmap[job_completed_ptr.Server_id] = working_mapper_hashmap[job_completed_ptr.Server_id]
@@ -348,7 +330,7 @@ func scheduler_mapper_goroutine() {
 							jobs[i].Server_id = server_ptr.Id
 							working_mapper_hashmap[server_ptr.Id] = server_ptr
 							server_ptr.Jobs[jobs[i].Id] = jobs[i]
-							go send_job_goroutine(server_ptr, jobs[i], "Mapper_handler.Send_job",
+							go Rpc_job_goroutine(server_ptr, jobs[i], "Mapper_handler.Send_job",
 								"Sent mapper job " + jobs[i].Id + " task " + jobs[i].Task_id)
 						i += 1
 						}
@@ -526,7 +508,7 @@ func scheduler_reducer_goroutine() {
 							job_ptr.Server_id = server_id
 							working_reducer_hashmap[server_id] = server_ptr
 							InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to reducer", job_ptr.Server_id)
-							go send_job_goroutine(server_ptr, job_ptr, "Reducer_handler.Send_job",
+							go Rpc_job_goroutine(server_ptr, job_ptr, "Reducer_handler.Send_job",
 								"Sent reducer job " + job_ptr.Id + " task " + job_ptr.Task_id)
 							break
 						}
@@ -551,7 +533,7 @@ func scheduler_reducer_goroutine() {
 				working_reducer_hashmap[add_reducer_ptr.Id] = add_reducer_ptr
 				add_reducer_ptr.Jobs[job_ptr.Id] = job_ptr
 				InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to reducer", job_ptr.Server_id)
-				go send_job_goroutine(add_reducer_ptr, job_ptr, "Reducer_handler.Send_job",
+				go Rpc_job_goroutine(add_reducer_ptr, job_ptr, "Reducer_handler.Send_job",
 					"Sent reducer job " + job_ptr.Id + " task " + job_ptr.Task_id)
 			default:
 				idle_reducer_hashmap[add_reducer_ptr.Id] = add_reducer_ptr
@@ -577,7 +559,7 @@ func scheduler_reducer_goroutine() {
 					job_ptr.Server_id = job_completed_ptr.Server_id
 					InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to reducer", job_ptr.Server_id)
 					reducer_job_map_ptr[job_ptr.Id] = job_ptr
-					go send_job_goroutine(working_reducer_hashmap[job_completed_ptr.Server_id], job_ptr, "Reducer_handler.Send_job",
+					go Rpc_job_goroutine(working_reducer_hashmap[job_completed_ptr.Server_id], job_ptr, "Reducer_handler.Send_job",
 						"Sent reducer job " + job_ptr.Id + " task " + job_ptr.Task_id)
 				default:
 					idle_reducer_hashmap[job_completed_ptr.Server_id] = working_reducer_hashmap[job_completed_ptr.Server_id]
@@ -653,7 +635,7 @@ func scheduler_reducer_goroutine() {
 							jobs[i].Server_id = server_ptr.Id
 							working_reducer_hashmap[server_ptr.Id] = server_ptr
 							server_ptr.Jobs[jobs[i].Id] = jobs[i]
-							go send_job_goroutine(server_ptr, jobs[i], "Reducer_handler.Send_job",
+							go Rpc_job_goroutine(server_ptr, jobs[i], "Reducer_handler.Send_job",
 								"Sent reducer job " + jobs[i].Id + " task " + jobs[i].Task_id)
 						i += 1
 						}
