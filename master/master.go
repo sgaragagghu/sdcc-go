@@ -109,29 +109,7 @@ func task_injector_goroutine() { // TODO make a jsonrpc interface to send tasks 
 
 		reader := bytes.NewReader((*load_ptr)[actual_begin:actual_end])
 		buffered_read := bufio.NewReader(reader)
-		var char byte = 0
-		j := 1
-		s := ""
-		full_s := ""
-		for char, err = buffered_read.ReadByte(); err == nil; char, err = buffered_read.ReadByte() {
-			//InfoLoggerPtr.Println(string(char))
-			if char == task_ptr.separate_properties {
-				if j < int(task_ptr.properties_amount)  {
-					offsets[i][j - 1], _ = strconv.ParseFloat(s, 64) //TODO check the error
-					full_s = s + string(task_ptr.separate_properties)
-					s = ""
-					j += 1
-				} else { ErrorLoggerPtr.Fatal("Parsing failed") }
-			} else if char == task_ptr.separate_entries {
-				if j == int(task_ptr.properties_amount) {
-					offsets[i][j - 1], _ = strconv.ParseFloat(s, 64) // TODO check the error
-					full_s += s + string(task_ptr.separate_entries)
-					break
-				} else { ErrorLoggerPtr.Fatal("Parsing failed") }
-			} else {
-				s += string(char) // TODO Try to use a buffer like bytes.NewBufferString(ret) for better performances
-			}
-		}
+		Parser_simple(&(offsets[i]), buffered_read, task_ptr.separate_properties, task_ptr.separate_entries)
 
 	}
 
@@ -426,7 +404,7 @@ func iteration_algorithm_clustering_deep_equal(a map[string]interface{}, b map[s
 
 	}*/
 
-	return false
+	return true
 }
 
 func iteration_algorithm_clustering(task_ptr *task, new_task_ptr_ptr **task, keys_x_values map[string]interface{}) (bool) {
