@@ -4,6 +4,7 @@ import (
 	"os"
 	"time"
 	"log"
+	"net/rpc"
 )
 
 // tech debt
@@ -72,4 +73,22 @@ func init() {
 
 }
 
+
+func Rpc_job_goroutine(server_ptr *Server, job_ptr *Job, method string, log_message string) {
+	// connect to mapper via rpc tcp
+	client, err := rpc.Dial("tcp", server_ptr.Ip + ":" + server_ptr.Port)
+	defer client.Close()
+	if err != nil {
+		ErrorLoggerPtr.Fatal(err)
+	}
+
+	var reply int
+
+	err = client.Call(method, job_ptr, &reply)
+	if err != nil {
+		ErrorLoggerPtr.Fatal(method, "error:", err)
+	}
+	InfoLoggerPtr.Println(log_message)
+
+}
 
