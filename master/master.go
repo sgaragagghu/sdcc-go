@@ -39,6 +39,8 @@ type task struct {
 	iteration_algorithm string
 	iteration_algorithm_parameters interface{}
 	keys_x_servers *orderedmap.OrderedMap
+	jobs map[string]*Job
+	jobs_done map[string]*Job
 }
 
 var (
@@ -110,7 +112,7 @@ func task_injector_goroutine() { // TODO make a jsonrpc interface to send tasks 
 	iteration_parameters[0] =  1 // max_diff (percentage)
 
 	task_ptr := &task{-1, -1, "https://raw.githubusercontent.com/sgaragagghu/sdcc-clustering-datasets/master/sdcc/2d-4c.csv", 1, 10,
-		'\n', ',', 2, "clustering", "clustering", parameters, 1, "clustering", nil, "clustering", iteration_parameters, nil}
+		'\n', ',', 2, "clustering", "clustering", parameters, 1, "clustering", nil, "clustering", iteration_parameters, nil, make(map[string]*Job), make(map[string]*Job)}
 
 	// TODO check error and return...
 	/*_, _ := */Call("initialization_algorithm_" + task_ptr.initialization_algorithm, stub_storage, task_ptr)
@@ -193,20 +195,31 @@ func scheduler_mapper_goroutine() {
 	working_mapper_hashmap := make(map[string]*Server)
 	task_hashmap := make(map[string]*task)
 	keys_x_servers := orderedmap.NewOrderedMap()
+	servers_x_tasks_x_jobs := make(map[string]map[string]map[string]*Job)
+	servers_x_tasks_x_jobs_done := make(map[string]map[string]map[string]*Job)
+	current_task := ""
 
 	for {
 		select {
 		case rem_mapper_ptr := <-rem_mapper_channel:
 			if _, ok := idle_mapper_hashmap[rem_mapper_ptr.Id]; ok {
 				delete(idle_mapper_hashmap, rem_mapper_ptr.Id)
-			} else if server, ok := working_mapper_hashmap[rem_mapper_ptr.Id]; ok {
-				jobs := server.Jobs
+			} else if _, ok := working_mapper_hashmap[rem_mapper_ptr.Id]; ok {
+				jobs := servers_x_tasks_x_jobs[rem_mapper_ptr.Id][current_task]
 				for _, job_ptr := range jobs {
 					if len(idle_mapper_hashmap) > 0 {
 						for server_id, server_ptr := range idle_mapper_hashmap {
 							delete(idle_mapper_hashmap, server_id)
 							job_ptr.Server_id = server_id
 							working_mapper_hashmap[server_id] = server_ptr
+							{
+								job_map, ok := servers_x_tasks_x_jobs[server_id][job_ptr.Task_id]
+								if !ok {
+									job_map = make(map[string]*Job)
+									servers_x_tasks_x_jobs[server_id][job_ptr.Task_id] = job_map
+								}
+								job_map[job_ptr.Id] = job_ptr
+							}
 							InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to mapper", job_ptr.Server_id)
 							go Rpc_job_goroutine(server_ptr, job_ptr, "Mapper_handler.Send_job",
 								"Sent mapper job " + job_ptr.Id + " task " + job_ptr.Task_id)
@@ -222,16 +235,26 @@ func scheduler_mapper_goroutine() {
 					}
 				}
 			delete(working_mapper_hashmap, rem_mapper_ptr.Id)
+			delete(servers_x_tasks_x_jobs, rem_mapper_ptr.Id)
+			delete(servers_x_tasks_x_jobs_done, rem_mapper_ptr.Id)
 			}
 		case add_mapper_ptr := <-add_mapper_channel:
 			InfoLoggerPtr.Println("Mapper", add_mapper_ptr.Id, "ip", add_mapper_ptr.Ip, "port", add_mapper_ptr.Port, "is being added")
-			mapper_job_map := make(map[string]*Job)
-			add_mapper_ptr.Jobs = mapper_job_map
+			servers_x_tasks_x_jobs[add_mapper_ptr.Id] = make(map[string]map[string]*Job)
+			servers_x_tasks_x_jobs_done[add_mapper_ptr.Id] = make(map[string]map[string]*Job)
+
 			select {
 			case job_ptr := <-job_channel:
 				job_ptr.Server_id = add_mapper_ptr.Id
 				working_mapper_hashmap[add_mapper_ptr.Id] = add_mapper_ptr
-				add_mapper_ptr.Jobs[job_ptr.Id] = job_ptr
+				{
+					job_map, ok := servers_x_tasks_x_jobs[add_mapper_ptr.Id][job_ptr.Task_id]
+					if !ok {
+						job_map = make(map[string]*Job)
+						servers_x_tasks_x_jobs[add_mapper_ptr.Id][job_ptr.Task_id] = job_map
+					}
+					job_map[job_ptr.Id] = job_ptr
+				}
 				InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to mapper", job_ptr.Server_id)
 				go Rpc_job_goroutine(add_mapper_ptr, job_ptr, "Mapper_handler.Send_job",
 					"Sent mapper job " + job_ptr.Id + " task " + job_ptr.Task_id)
@@ -239,8 +262,22 @@ func scheduler_mapper_goroutine() {
 				idle_mapper_hashmap[add_mapper_ptr.Id] = add_mapper_ptr
 			}
 		case job_completed_ptr := <-Job_mapper_completed_channel:
-			mapper_job_map_ptr := working_mapper_hashmap[job_completed_ptr.Server_id].Jobs
-			delete(mapper_job_map_ptr, job_completed_ptr.Id)
+			task_ptr := task_hashmap[job_completed_ptr.Task_id]
+			{
+				job_map, ok := servers_x_tasks_x_jobs_done[job_completed_ptr.Server_id][job_completed_ptr.Task_id]
+				if !ok {
+					job_map = make(map[string]*Job)
+					servers_x_tasks_x_jobs_done[job_completed_ptr.Server_id][job_completed_ptr.Task_id] = job_map
+				}
+				job_map[job_completed_ptr.Id] = job_completed_ptr
+			}
+
+			delete(task_ptr.jobs, job_completed_ptr.Id)
+			task_ptr.jobs_done[job_completed_ptr.Id] = job_completed_ptr
+			delete(servers_x_tasks_x_jobs[job_completed_ptr.Server_id][job_completed_ptr.Task_id], job_completed_ptr.Id)
+			if len(servers_x_tasks_x_jobs[job_completed_ptr.Server_id][job_completed_ptr.Task_id]) == 0 {
+				delete(servers_x_tasks_x_jobs[job_completed_ptr.Server_id], job_completed_ptr.Task_id)
+			}
 
 			for _, v := range job_completed_ptr.Keys {
 				value, ok := keys_x_servers.Get(v)
@@ -253,20 +290,26 @@ func scheduler_mapper_goroutine() {
 				server_light := Server{server.Id, server.Ip, server.Port, server.Last_heartbeat, nil, server.Role}
 				value.(map[string]*Server)[job_completed_ptr.Server_id] = &server_light
 			}
-
-			if len(mapper_job_map_ptr) == 0 {
+			if len(servers_x_tasks_x_jobs[job_completed_ptr.Server_id]) == 0 {
 				select {
 				case job_ptr := <-job_channel:
 					job_ptr.Server_id = job_completed_ptr.Server_id
 					InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to mapper", job_ptr.Server_id)
-					mapper_job_map_ptr[job_ptr.Id] = job_ptr
+					{
+						job_map, ok := servers_x_tasks_x_jobs[job_ptr.Server_id][job_ptr.Task_id]
+						if !ok {
+							job_map = make(map[string]*Job)
+							servers_x_tasks_x_jobs[job_ptr.Server_id][job_ptr.Task_id] = job_map
+						}
+						job_map[job_ptr.Id] = job_ptr
+					}
 					go Rpc_job_goroutine(working_mapper_hashmap[job_completed_ptr.Server_id], job_ptr, "Mapper_handler.Send_job",
 						"Sent mapper job " + job_ptr.Id + " task " + job_ptr.Task_id)
 				default:
 					idle_mapper_hashmap[job_completed_ptr.Server_id] = working_mapper_hashmap[job_completed_ptr.Server_id]
 					delete(working_mapper_hashmap, job_completed_ptr.Server_id)
 				}
-				if len(working_mapper_hashmap) == 0 {
+				if len(task_ptr.jobs) == 0 {
 					InfoLoggerPtr.Println("Mapper job", job_completed_ptr.Id, "task", job_completed_ptr.Task_id, "completed.")
 					state = IDLE
 
@@ -295,7 +338,7 @@ func scheduler_mapper_goroutine() {
 				}
 			}
 		case <-New_task_mapper_event_channel:
-			if len(working_mapper_hashmap) == 0 { // if the curent task finished
+			if current_task == "" || len(task_hashmap[current_task].jobs) == 0 { // if the curent task finished
 				select {
 				case task_ptr := <-Task_mapper_channel:
 					task_ptr.id = task_counter
@@ -319,6 +362,7 @@ func scheduler_mapper_goroutine() {
 								strconv.FormatInt(int64(task_ptr.origin_id), 10), "", task_ptr.resource_link, begin, end, task_ptr.margin,
 								task_ptr.separate_entries, task_ptr.separate_properties, task_ptr.properties_amount,
 								task_ptr.map_algorithm, task_ptr.map_algorithm_parameters, nil, nil,  nil, false}
+							task_ptr.jobs[strconv.FormatInt(int64(i), 10)] = jobs[i]
 						}
 					}
 					if len(idle_mapper_hashmap) > 0 {
@@ -327,7 +371,14 @@ func scheduler_mapper_goroutine() {
 							if i >= mappers_amount { break }
 							jobs[i].Server_id = server_ptr.Id
 							working_mapper_hashmap[server_ptr.Id] = server_ptr
-							server_ptr.Jobs[jobs[i].Id] = jobs[i]
+							{
+								job_map, ok := servers_x_tasks_x_jobs[server_ptr.Id][jobs[i].Task_id]
+								if !ok {
+									job_map = make(map[string]*Job)
+									servers_x_tasks_x_jobs[server_ptr.Id][jobs[i].Task_id] = job_map
+								}
+								job_map[jobs[i].Id] = jobs[i]
+							}
 							go Rpc_job_goroutine(server_ptr, jobs[i], "Mapper_handler.Send_job",
 								"Sent mapper job " + jobs[i].Id + " task " + jobs[i].Task_id)
 						i += 1
@@ -444,7 +495,8 @@ func iteration_algorithm_clustering(task_ptr *task, new_task_ptr_ptr **task, key
 	*new_task_ptr_ptr = &task{-1, task_ptr.origin_id, task_ptr.resource_link, task_ptr.mappers_amount, task_ptr.margin,
 		task_ptr.separate_entries, task_ptr.separate_properties, task_ptr.properties_amount, task_ptr.initialization_algorithm,
 		task_ptr.map_algorithm, task_ptr.map_algorithm_parameters, task_ptr.reducers_amount, task_ptr.reduce_algorithm,
-		task_ptr.reduce_algorithm_parameters, task_ptr.iteration_algorithm, task_ptr.iteration_algorithm_parameters, nil}
+		task_ptr.reduce_algorithm_parameters, task_ptr.iteration_algorithm, task_ptr.iteration_algorithm_parameters, nil,
+		make(map[string]*Job), make(map[string]*Job)}
 	InfoLoggerPtr.Println("Fixpoint not found yet, new_task created")
 
 	for index, index_value_o := range task_ptr.map_algorithm_parameters.([]interface{})[1:] {
