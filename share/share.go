@@ -22,11 +22,14 @@ const (
 const (
 	IDLE = "IDLE"
 	BUSY = "BUSY"
+	WAIT = "WAIT"
 )
 
 const APP_ID = "SDCC"
 
 const MASTER_IP = "172.18.0.254"
+
+const MAX_MAP_TASKS = 2
 
 const SECOND = time.Second
 

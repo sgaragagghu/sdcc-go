@@ -19,6 +19,12 @@ import (
 	"github.com/elliotchance/orderedmap"
 )
 
+
+type map_to_reduce_error struct {
+	task_id string
+	keys_x_servers *orderedmap.OrderedMap
+}
+
 type task struct {
 	id int32
 	origin_id int32
@@ -54,6 +60,9 @@ var (
 	rem_mapper_channel chan *Server
 	add_reducer_channel chan *Server
 	rem_reducer_channel chan *Server
+
+	probable_reducer_error_channel chan *map_to_reduce_error
+	task_reducer_completed_channel chan string
 
 	stub_storage StubMapping
 )
@@ -112,7 +121,8 @@ func task_injector_goroutine() { // TODO make a jsonrpc interface to send tasks 
 	iteration_parameters[0] =  1 // max_diff (percentage)
 
 	task_ptr := &task{-1, -1, "https://raw.githubusercontent.com/sgaragagghu/sdcc-clustering-datasets/master/sdcc/2d-4c.csv", 1, 10,
-		'\n', ',', 2, "clustering", "clustering", parameters, 1, "clustering", nil, "clustering", iteration_parameters, nil, make(map[string]*Job), make(map[string]*Job)}
+		'\n', ',', 2, "clustering", "clustering", parameters, 1, "clustering", nil, "clustering", iteration_parameters, orderedmap.NewOrderedMap(),
+		make(map[string]*Job), make(map[string]*Job)}
 
 	// TODO check error and return...
 	/*_, _ := */Call("initialization_algorithm_" + task_ptr.initialization_algorithm, stub_storage, task_ptr)
@@ -185,19 +195,33 @@ func heartbeat_goroutine() {
 	}
 }
 
+func assign_job_mapper(server_ptr *Server, job_ptr *Job, working_mapper_hashmap map[string]*Server, servers_x_tasks_x_jobs map[string]map[string]map[string]*Job) {
+
+	job_ptr.Server_id = server_ptr.Id
+	working_mapper_hashmap[server_ptr.Id] = server_ptr
+	{
+		job_map, ok := servers_x_tasks_x_jobs[server_ptr.Id][job_ptr.Task_id]
+		if !ok {
+			job_map = make(map[string]*Job)
+			servers_x_tasks_x_jobs[server_ptr.Id][job_ptr.Task_id] = job_map
+		}
+		job_map[job_ptr.Id] = job_ptr
+	}
+	InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to mapper", job_ptr.Server_id)
+	go Rpc_job_goroutine(server_ptr, job_ptr, "Mapper_handler.Send_job",
+		"Sent mapper job " + job_ptr.Id + " task " + job_ptr.Task_id)
+}
+
 func scheduler_mapper_goroutine() {
 	InfoLoggerPtr.Println("Scheduler_mapper_goroutine started.")
 
 	var task_counter int32 = 0
-	state := IDLE
 	job_channel := make(chan *Job, 1000)
 	idle_mapper_hashmap := make(map[string]*Server)
 	working_mapper_hashmap := make(map[string]*Server)
 	task_hashmap := orderedmap.NewOrderedMap()
-	keys_x_servers := orderedmap.NewOrderedMap()
 	servers_x_tasks_x_jobs := make(map[string]map[string]map[string]*Job)
 	servers_x_tasks_x_jobs_done := make(map[string]map[string]map[string]*Job)
-	current_task := ""
 
 	for {
 		select {
@@ -205,64 +229,70 @@ func scheduler_mapper_goroutine() {
 			if _, ok := idle_mapper_hashmap[rem_mapper_ptr.Id]; ok {
 				delete(idle_mapper_hashmap, rem_mapper_ptr.Id)
 			} else if _, ok := working_mapper_hashmap[rem_mapper_ptr.Id]; ok {
-				jobs := servers_x_tasks_x_jobs[rem_mapper_ptr.Id][current_task]
-				for _, job_ptr := range jobs {
-					if len(idle_mapper_hashmap) > 0 {
-						for server_id, server_ptr := range idle_mapper_hashmap {
-							delete(idle_mapper_hashmap, server_id)
-							job_ptr.Server_id = server_id
-							working_mapper_hashmap[server_id] = server_ptr
-							{
-								job_map, ok := servers_x_tasks_x_jobs[server_id][job_ptr.Task_id]
-								if !ok {
-									job_map = make(map[string]*Job)
-									servers_x_tasks_x_jobs[server_id][job_ptr.Task_id] = job_map
+				probable_reducer_task_error := make(map[string]struct{})
+				for el := task_hashmap.Back(); el != nil; el = el.Prev() {
+					current_task_ptr := strconv.FormatInt(int64(el.Value.(*task).id), 10)
+					task_ptr_o, task_present := task_hashmap.Get(current_task_ptr)
+					if !task_present { break }
+					task_ptr := task_ptr_o.(*task)
+					jobs := servers_x_tasks_x_jobs[rem_mapper_ptr.Id][current_task_ptr]
+					for i := 0; i < 2; i += 1 {
+						for _, job_ptr := range jobs {
+							if i > 1 { // this is the iteration with the already done jobs
+								probable_reducer_task_error[job_ptr.Task_id] = struct{}{}
+								delete(task_ptr.jobs_done, job_ptr.Id)
+								task_ptr.jobs[job_ptr.Id] = job_ptr
+								for _, v := range job_ptr.Keys {
+									servers, _ := task_ptr.keys_x_servers.Get(v) // TODO check errors
+									delete(servers.(map[string]*Server), rem_mapper_ptr.Id)
 								}
-								job_map[job_ptr.Id] = job_ptr
 							}
-							InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to mapper", job_ptr.Server_id)
-							go Rpc_job_goroutine(server_ptr, job_ptr, "Mapper_handler.Send_job",
-								"Sent mapper job " + job_ptr.Id + " task " + job_ptr.Task_id)
-							break
+							if len(idle_mapper_hashmap) > 0 {
+								for _, server_ptr := range idle_mapper_hashmap {
+									delete(idle_mapper_hashmap, server_ptr.Id)
+									assign_job_mapper(server_ptr, job_ptr, working_mapper_hashmap, servers_x_tasks_x_jobs)
+									break
+								}
+							} else {
+								select {
+								case job_channel <- job_ptr:
+									InfoLoggerPtr.Println("Job", job_ptr.Id, "rescheduled.")
+								default:
+									ErrorLoggerPtr.Fatal("job_channel queue full") // TODO handle this case...
+								}
+							}
 						}
-					} else {
-						select {
-						case job_channel <- job_ptr:
-							InfoLoggerPtr.Println("Job", job_ptr.Id, "rescheduled.")
-						default:
-							ErrorLoggerPtr.Fatal("job_channel queue full") // TODO handle this case...
-						}
+						jobs = servers_x_tasks_x_jobs_done[rem_mapper_ptr.Id][current_task_ptr]
 					}
 				}
-			delete(working_mapper_hashmap, rem_mapper_ptr.Id)
-			delete(servers_x_tasks_x_jobs, rem_mapper_ptr.Id)
-			delete(servers_x_tasks_x_jobs_done, rem_mapper_ptr.Id)
+				for task_id, _ := range probable_reducer_task_error {
+					select {
+					case probable_reducer_error_channel <- &map_to_reduce_error{task_id, nil}:
+					default:
+						ErrorLoggerPtr.Fatal("Probable_reducer_error_channel is full.")
+					}
+				}
+				delete(working_mapper_hashmap, rem_mapper_ptr.Id)
+				delete(servers_x_tasks_x_jobs, rem_mapper_ptr.Id)
+				delete(servers_x_tasks_x_jobs_done, rem_mapper_ptr.Id)
 			}
 		case add_mapper_ptr := <-add_mapper_channel:
 			InfoLoggerPtr.Println("Mapper", add_mapper_ptr.Id, "ip", add_mapper_ptr.Ip, "port", add_mapper_ptr.Port, "is being added")
 			servers_x_tasks_x_jobs[add_mapper_ptr.Id] = make(map[string]map[string]*Job)
 			servers_x_tasks_x_jobs_done[add_mapper_ptr.Id] = make(map[string]map[string]*Job)
-
-			select {
-			case job_ptr := <-job_channel:
-				job_ptr.Server_id = add_mapper_ptr.Id
-				working_mapper_hashmap[add_mapper_ptr.Id] = add_mapper_ptr
-				{
-					job_map, ok := servers_x_tasks_x_jobs[add_mapper_ptr.Id][job_ptr.Task_id]
-					if !ok {
-						job_map = make(map[string]*Job)
-						servers_x_tasks_x_jobs[add_mapper_ptr.Id][job_ptr.Task_id] = job_map
-					}
-					job_map[job_ptr.Id] = job_ptr
+			for loop := true; loop; {
+				select {
+				case job_ptr := <-job_channel: // TODO prioritize oldest task's jobs first
+					if _, present := task_hashmap.Get(job_ptr.Task_id); !present { continue }
+					assign_job_mapper(add_mapper_ptr, job_ptr, working_mapper_hashmap, servers_x_tasks_x_jobs)
+				default:
+					idle_mapper_hashmap[add_mapper_ptr.Id] = add_mapper_ptr
 				}
-				InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to mapper", job_ptr.Server_id)
-				go Rpc_job_goroutine(add_mapper_ptr, job_ptr, "Mapper_handler.Send_job",
-					"Sent mapper job " + job_ptr.Id + " task " + job_ptr.Task_id)
-			default:
-				idle_mapper_hashmap[add_mapper_ptr.Id] = add_mapper_ptr
+				loop = false
 			}
 		case job_completed_ptr := <-Job_mapper_completed_channel:
-			task_ptr_o, _ := task_hashmap.Get(job_completed_ptr.Task_id) // TODO check error
+			task_ptr_o, present := task_hashmap.Get(job_completed_ptr.Task_id)
+			if !present { break }
 			task_ptr := task_ptr_o.(*task)
 			{
 				job_map, ok := servers_x_tasks_x_jobs_done[job_completed_ptr.Server_id][job_completed_ptr.Task_id]
@@ -281,6 +311,7 @@ func scheduler_mapper_goroutine() {
 			}
 
 			for _, v := range job_completed_ptr.Keys {
+				keys_x_servers := task_ptr.keys_x_servers
 				value, ok := keys_x_servers.Get(v)
 				if !ok {
 					value = make(map[string]*Server)
@@ -292,31 +323,23 @@ func scheduler_mapper_goroutine() {
 				value.(map[string]*Server)[job_completed_ptr.Server_id] = &server_light
 			}
 			if len(servers_x_tasks_x_jobs[job_completed_ptr.Server_id]) == 0 {
-				select {
-				case job_ptr := <-job_channel:
-					job_ptr.Server_id = job_completed_ptr.Server_id
-					InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to mapper", job_ptr.Server_id)
-					{
-						job_map, ok := servers_x_tasks_x_jobs[job_ptr.Server_id][job_ptr.Task_id]
-						if !ok {
-							job_map = make(map[string]*Job)
-							servers_x_tasks_x_jobs[job_ptr.Server_id][job_ptr.Task_id] = job_map
-						}
-						job_map[job_ptr.Id] = job_ptr
+				for loop := true; loop; {
+					select {
+					case job_ptr := <-job_channel:
+						if _, present := task_hashmap.Get(job_ptr.Task_id); !present { continue }
+						assign_job_mapper(working_mapper_hashmap[job_completed_ptr.Server_id], job_ptr, working_mapper_hashmap, servers_x_tasks_x_jobs)
+					default:
+						idle_mapper_hashmap[job_completed_ptr.Server_id] = working_mapper_hashmap[job_completed_ptr.Server_id]
+						delete(working_mapper_hashmap, job_completed_ptr.Server_id)
 					}
-					go Rpc_job_goroutine(working_mapper_hashmap[job_completed_ptr.Server_id], job_ptr, "Mapper_handler.Send_job",
-						"Sent mapper job " + job_ptr.Id + " task " + job_ptr.Task_id)
-				default:
-					idle_mapper_hashmap[job_completed_ptr.Server_id] = working_mapper_hashmap[job_completed_ptr.Server_id]
-					delete(working_mapper_hashmap, job_completed_ptr.Server_id)
+					loop = false
 				}
+
 				if len(task_ptr.jobs) == 0 {
-					InfoLoggerPtr.Println("Mapper job", job_completed_ptr.Id, "task", job_completed_ptr.Task_id, "completed.")
-					state = IDLE
+					InfoLoggerPtr.Println("Task mapper completed, job", job_completed_ptr.Id, "task", job_completed_ptr.Task_id, ".")
 
 					task_ptr_o, _ := task_hashmap.Get(job_completed_ptr.Task_id) // TODO check error
 					task_ptr := task_ptr_o.(*task)
-					task_ptr.keys_x_servers = keys_x_servers
 
 					select {
 					case Task_reducer_channel <- task_ptr:
@@ -329,30 +352,36 @@ func scheduler_mapper_goroutine() {
 						ErrorLoggerPtr.Fatal("Task reduce channel is full")
 					}
 
-				}
-				if state == IDLE && len(Task_mapper_channel) > 0 { // if the curent task finished and theres a task
-					select {
-					case New_task_mapper_event_channel <-struct{}{}:
-					default:
-						ErrorLoggerPtr.Fatal("New_task_mapper_event_channel full.")
+					if task_hashmap.Len() < MAX_MAP_TASKS && len(Task_mapper_channel) > 0 { // if the curent task finished and theres a task
+						select {
+						case New_task_mapper_event_channel <-struct{}{}:
+						default:
+							ErrorLoggerPtr.Fatal("New_task_mapper_event_channel full.")
+						}
 					}
-					keys_x_servers = orderedmap.NewOrderedMap()
 				}
 			}
+		case task_id := <-task_reducer_completed_channel:
+			task_hashmap.Delete(task_id)
 		case <-New_task_mapper_event_channel:
-			current_task_finished := false
-			if current_task != "" {
-				current_task_ptr, _ := task_hashmap.Get(current_task) // TODO check error
-				if len(current_task_ptr.(*task).jobs) == 0 {
-					current_task_finished = true
+			process_new_task := false
+			latest_task_map_el := task_hashmap.Front() // TODO check error
+			var latest_task_ptr *task
+			if latest_task_map_el != nil {
+				latest_task_ptr = latest_task_map_el.Value.(*task)
+				if len(latest_task_ptr.jobs) == 0 { // current job finished
+					if task_hashmap.Len() < MAX_MAP_TASKS {
+						process_new_task = true
+					} else {
+						InfoLoggerPtr.Println("Waiting one reduce task to finish.")
+					}
 				}
-			} else { current_task_finished = true  }
-			if current_task_finished { // if the curent task finished
+			} else { process_new_task = true }
+			if process_new_task {
 				select {
 				case task_ptr := <-Task_mapper_channel:
 					task_ptr.id = task_counter
 					task_counter += 1
-					state = BUSY
 					task_hashmap.Set(strconv.Itoa(int(task_ptr.id)), task_ptr) // TODO check overflow
 					InfoLoggerPtr.Println("Scheduling mapper task:", task_ptr.id)
 					resource_size := Get_file_size(task_ptr.resource_link)
@@ -378,18 +407,7 @@ func scheduler_mapper_goroutine() {
 						var i int32 = 0
 						for _, server_ptr := range idle_mapper_hashmap {
 							if i >= mappers_amount { break }
-							jobs[i].Server_id = server_ptr.Id
-							working_mapper_hashmap[server_ptr.Id] = server_ptr
-							{
-								job_map, ok := servers_x_tasks_x_jobs[server_ptr.Id][jobs[i].Task_id]
-								if !ok {
-									job_map = make(map[string]*Job)
-									servers_x_tasks_x_jobs[server_ptr.Id][jobs[i].Task_id] = job_map
-								}
-								job_map[jobs[i].Id] = jobs[i]
-							}
-							go Rpc_job_goroutine(server_ptr, jobs[i], "Mapper_handler.Send_job",
-								"Sent mapper job " + jobs[i].Id + " task " + jobs[i].Task_id)
+							assign_job_mapper(server_ptr, jobs[i], working_mapper_hashmap, servers_x_tasks_x_jobs)
 						i += 1
 						}
 					} else {
@@ -504,7 +522,7 @@ func iteration_algorithm_clustering(task_ptr *task, new_task_ptr_ptr **task, key
 	*new_task_ptr_ptr = &task{-1, task_ptr.origin_id, task_ptr.resource_link, task_ptr.mappers_amount, task_ptr.margin,
 		task_ptr.separate_entries, task_ptr.separate_properties, task_ptr.properties_amount, task_ptr.initialization_algorithm,
 		task_ptr.map_algorithm, task_ptr.map_algorithm_parameters, task_ptr.reducers_amount, task_ptr.reduce_algorithm,
-		task_ptr.reduce_algorithm_parameters, task_ptr.iteration_algorithm, task_ptr.iteration_algorithm_parameters, nil,
+		task_ptr.reduce_algorithm_parameters, task_ptr.iteration_algorithm, task_ptr.iteration_algorithm_parameters, orderedmap.NewOrderedMap(),
 		make(map[string]*Job), make(map[string]*Job)}
 	InfoLoggerPtr.Println("Fixpoint not found yet, new_task created")
 
@@ -550,18 +568,28 @@ func scheduler_reducer_goroutine() {
 	job_channel := make(chan *Job, 1000)
 	idle_reducer_hashmap := make(map[string]*Server)
 	working_reducer_hashmap := make(map[string]*Server)
-	task_hashmap := make(map[string]*task)
+	task_hashmap := orderedmap.NewOrderedMap()
 	keys_x_values := make(map[string]interface{})
 
 	for {
 		select {
+		case error_ptr := <-probable_reducer_error_channel:
+			if error_ptr.keys_x_servers == nil { // have to wait till mapper will produce the new keys_x_servers
+				if el := task_hashmap.Front(); el != nil {
+					if el.Key.(string) == error_ptr.task_id { state = WAIT }
+				}
+			} else {
+				task_ptr, _ := task_hashmap.Get(error_ptr.Task_id)
+				task_ptr.keys_x_servers = error_ptr.keys_x_servers
+				
+			}
 		case rem_reducer_ptr := <-rem_reducer_channel:
 			if _, ok := idle_reducer_hashmap[rem_reducer_ptr.Id]; ok {
 				delete(idle_reducer_hashmap, rem_reducer_ptr.Id)
 			} else if server, ok := working_reducer_hashmap[rem_reducer_ptr.Id]; ok {
 				jobs := server.Jobs
 				for _, job_ptr := range jobs {
-					if len(idle_reducer_hashmap) > 0 {
+					if state != WAIT && len(idle_reducer_hashmap) > 0 {
 						for server_id, server_ptr := range idle_reducer_hashmap {
 							delete(idle_reducer_hashmap, server_id)
 							job_ptr.Server_id = server_id
@@ -586,15 +614,19 @@ func scheduler_reducer_goroutine() {
 			InfoLoggerPtr.Println("Reducer", add_reducer_ptr.Id, "ip", add_reducer_ptr.Ip, "port", add_reducer_ptr.Port, "is being added")
 			reducer_job_map := make(map[string]*Job)
 			add_reducer_ptr.Jobs = reducer_job_map
-			select {
-			case job_ptr := <-job_channel:
-				job_ptr.Server_id = add_reducer_ptr.Id
-				working_reducer_hashmap[add_reducer_ptr.Id] = add_reducer_ptr
-				add_reducer_ptr.Jobs[job_ptr.Id] = job_ptr
-				InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to reducer", job_ptr.Server_id)
-				go Rpc_job_goroutine(add_reducer_ptr, job_ptr, "Reducer_handler.Send_job",
-					"Sent reducer job " + job_ptr.Id + " task " + job_ptr.Task_id)
-			default:
+			if state != WAIT {
+				select {
+				case job_ptr := <-job_channel:
+					job_ptr.Server_id = add_reducer_ptr.Id
+					working_reducer_hashmap[add_reducer_ptr.Id] = add_reducer_ptr
+					add_reducer_ptr.Jobs[job_ptr.Id] = job_ptr
+					InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to reducer", job_ptr.Server_id)
+					go Rpc_job_goroutine(add_reducer_ptr, job_ptr, "Reducer_handler.Send_job",
+						"Sent reducer job " + job_ptr.Id + " task " + job_ptr.Task_id)
+				default:
+					idle_reducer_hashmap[add_reducer_ptr.Id] = add_reducer_ptr
+				}
+			} else {
 				idle_reducer_hashmap[add_reducer_ptr.Id] = add_reducer_ptr
 			}
 		case job_completed_ptr := <-Job_reducer_completed_channel:
@@ -613,22 +645,32 @@ func scheduler_reducer_goroutine() {
 			reducer_job_map_ptr := working_reducer_hashmap[job_completed_ptr.Server_id].Jobs
 			delete(reducer_job_map_ptr, job_completed_ptr.Id)
 			if len(reducer_job_map_ptr) == 0 {
-				select {
-				case job_ptr := <-job_channel:
-					job_ptr.Server_id = job_completed_ptr.Server_id
-					InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to reducer", job_ptr.Server_id)
-					reducer_job_map_ptr[job_ptr.Id] = job_ptr
-					go Rpc_job_goroutine(working_reducer_hashmap[job_completed_ptr.Server_id], job_ptr, "Reducer_handler.Send_job",
-						"Sent reducer job " + job_ptr.Id + " task " + job_ptr.Task_id)
-				default:
+				if state != WAIT {
+					select {
+					case job_ptr := <-job_channel:
+						job_ptr.Server_id = job_completed_ptr.Server_id
+						InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to reducer", job_ptr.Server_id)
+						reducer_job_map_ptr[job_ptr.Id] = job_ptr
+						go Rpc_job_goroutine(working_reducer_hashmap[job_completed_ptr.Server_id], job_ptr, "Reducer_handler.Send_job",
+							"Sent reducer job " + job_ptr.Id + " task " + job_ptr.Task_id)
+					default:
+						idle_reducer_hashmap[job_completed_ptr.Server_id] = working_reducer_hashmap[job_completed_ptr.Server_id]
+						delete(working_reducer_hashmap, job_completed_ptr.Server_id)
+					}
+				} else {
 					idle_reducer_hashmap[job_completed_ptr.Server_id] = working_reducer_hashmap[job_completed_ptr.Server_id]
 					delete(working_reducer_hashmap, job_completed_ptr.Server_id)
 				}
 				if len(working_reducer_hashmap) == 0 {
 					InfoLoggerPtr.Println("Reducer job", job_completed_ptr.Id, "task", job_completed_ptr.Task_id, "completed.")
 					state = IDLE
-					task_ptr := task_hashmap[job_completed_ptr.Task_id]
-					go iteration_manager(task_ptr, keys_x_values)
+					select {
+					case task_reducer_completed_channel <-job_completed_ptr.Task_id:
+					default:
+						ErrorLoggerPtr.Fatal("Task_reducer_completed full.")
+					}
+					task_ptr, _ := task_hashmap.Get(job_completed_ptr.Task_id) // TODO check error
+					go iteration_manager(task_ptr.(*task), keys_x_values)
 					keys_x_values = make(map[string]interface{})
 				}
 				if state == IDLE && len(Task_reducer_channel) > 0 { // if the curent task finished and theres a task
@@ -643,7 +685,7 @@ func scheduler_reducer_goroutine() {
 			if len(working_reducer_hashmap) == 0 { // if the curent task finished
 				select {
 				case task_ptr := <-Task_reducer_channel:
-					task_hashmap[strconv.Itoa(int(task_ptr.id))] = task_ptr // TODO check overflow
+					task_hashmap.Set(strconv.Itoa(int(task_ptr.id)), task_ptr) // TODO check overflow
 					state = BUSY
 					InfoLoggerPtr.Println("Scheduling reducer task:", task_ptr.id)
 					keys_amount := int32(task_ptr.keys_x_servers.Len()) // TODO check overflow
@@ -667,6 +709,7 @@ func scheduler_reducer_goroutine() {
 								slice_rest -= 1
 							}
 
+							// TODO copy it in map side too ! Possible BUG segmentation fault !
 							keys := make(map[string]map[string]*Server)
 							{
 								j := 0
@@ -754,6 +797,10 @@ func Master_main() {
 	Task_reducer_channel = make(chan *task, 1000)
 
 	Job_reducer_completed_channel = make(chan *Job, 1000)
+
+	task_reducer_completed_channel = make(chan string, 1000)
+
+	probable_reducer_error_channel = make(chan *map_to_reduce_error, 1000)
 
 	go scheduler_reducer_goroutine()
 	go scheduler_mapper_goroutine()
