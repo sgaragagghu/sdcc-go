@@ -262,7 +262,8 @@ func scheduler_mapper_goroutine() {
 				idle_mapper_hashmap[add_mapper_ptr.Id] = add_mapper_ptr
 			}
 		case job_completed_ptr := <-Job_mapper_completed_channel:
-			task_ptr, _ := task_hashmap.Get(job_completed_ptr.Task_id) // TODO check error
+			task_ptr_o, _ := task_hashmap.Get(job_completed_ptr.Task_id) // TODO check error
+			task_ptr := task_ptr_o.(*task)
 			{
 				job_map, ok := servers_x_tasks_x_jobs_done[job_completed_ptr.Server_id][job_completed_ptr.Task_id]
 				if !ok {
@@ -313,7 +314,8 @@ func scheduler_mapper_goroutine() {
 					InfoLoggerPtr.Println("Mapper job", job_completed_ptr.Id, "task", job_completed_ptr.Task_id, "completed.")
 					state = IDLE
 
-					task_ptr, _ := task_hashmap.Get(job_completed_ptr.Task_id) // TODO check error
+					task_ptr_o, _ := task_hashmap.Get(job_completed_ptr.Task_id) // TODO check error
+					task_ptr := task_ptr_o.(*task)
 					task_ptr.keys_x_servers = keys_x_servers
 
 					select {
@@ -338,8 +340,14 @@ func scheduler_mapper_goroutine() {
 				}
 			}
 		case <-New_task_mapper_event_channel:
-			current_task_ptr, _ := task_hashmap.Get(current_task) // TODO check error
-			if current_task == "" || len(current_task_ptr.jobs) == 0 { // if the curent task finished
+			current_task_finished := false
+			if current_task != "" {
+				current_task_ptr, _ := task_hashmap.Get(current_task) // TODO check error
+				if len(current_task_ptr.(*task).jobs) == 0 {
+					current_task_finished = true
+				}
+			} else { current_task_finished = true  }
+			if current_task_finished { // if the curent task finished
 				select {
 				case task_ptr := <-Task_mapper_channel:
 					task_ptr.id = task_counter
