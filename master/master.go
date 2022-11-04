@@ -193,7 +193,7 @@ func scheduler_mapper_goroutine() {
 	job_channel := make(chan *Job, 1000)
 	idle_mapper_hashmap := make(map[string]*Server)
 	working_mapper_hashmap := make(map[string]*Server)
-	task_hashmap := make(map[string]*task)
+	task_hashmap := orderedmap.NewOrderedMap()
 	keys_x_servers := orderedmap.NewOrderedMap()
 	servers_x_tasks_x_jobs := make(map[string]map[string]map[string]*Job)
 	servers_x_tasks_x_jobs_done := make(map[string]map[string]map[string]*Job)
@@ -262,7 +262,7 @@ func scheduler_mapper_goroutine() {
 				idle_mapper_hashmap[add_mapper_ptr.Id] = add_mapper_ptr
 			}
 		case job_completed_ptr := <-Job_mapper_completed_channel:
-			task_ptr := task_hashmap[job_completed_ptr.Task_id]
+			task_ptr, _ := task_hashmap.Get(job_completed_ptr.Task_id) // TODO check error
 			{
 				job_map, ok := servers_x_tasks_x_jobs_done[job_completed_ptr.Server_id][job_completed_ptr.Task_id]
 				if !ok {
@@ -313,7 +313,7 @@ func scheduler_mapper_goroutine() {
 					InfoLoggerPtr.Println("Mapper job", job_completed_ptr.Id, "task", job_completed_ptr.Task_id, "completed.")
 					state = IDLE
 
-					task_ptr, _ := task_hashmap[job_completed_ptr.Task_id]
+					task_ptr, _ := task_hashmap.Get(job_completed_ptr.Task_id) // TODO check error
 					task_ptr.keys_x_servers = keys_x_servers
 
 					select {
@@ -338,13 +338,14 @@ func scheduler_mapper_goroutine() {
 				}
 			}
 		case <-New_task_mapper_event_channel:
-			if current_task == "" || len(task_hashmap[current_task].jobs) == 0 { // if the curent task finished
+			current_task_ptr, _ := task_hashmap.Get(current_task) // TODO check error
+			if current_task == "" || len(current_task_ptr.jobs) == 0 { // if the curent task finished
 				select {
 				case task_ptr := <-Task_mapper_channel:
 					task_ptr.id = task_counter
 					task_counter += 1
 					state = BUSY
-					task_hashmap[strconv.Itoa(int(task_ptr.id))] = task_ptr // TODO check overflow
+					task_hashmap.Set(strconv.Itoa(int(task_ptr.id)), task_ptr) // TODO check overflow
 					InfoLoggerPtr.Println("Scheduling mapper task:", task_ptr.id)
 					resource_size := Get_file_size(task_ptr.resource_link)
 					mappers_amount := MinOf_int32(task_ptr.mappers_amount, int32(len(idle_mapper_hashmap))) // TODO check overflow
