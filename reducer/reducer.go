@@ -6,8 +6,8 @@ import (
 	. "../rpc_master"
 	. "../rpc_mapper"
 	"fmt"
-	"os"
-	"io/ioutil"
+	//"os"
+	//"io/ioutil"
 	"strconv"
 	"time"
 	"net/rpc"
@@ -18,9 +18,9 @@ import (
 	"container/list"
 	"bytes"
 	"bufio"
-//	"io"
-//	"math"
-//	"errors"
+	//"io"
+	//"math"
+	//"errors"
 
 
 	"github.com/elliotchance/orderedmap"
@@ -261,6 +261,10 @@ func init() {
 	ip := GetOutboundIP().String()
 	var id string
 
+	id = ip + MAPPER_PORT + APP_ID + strconv.FormatInt(time.Now().Unix(), 10)
+	id = fmt.Sprintf("%x", sha256.Sum256([]byte(id)))
+
+/*
 	bytes, err := ioutil.ReadFile("./ID")
 	if string(bytes) == "" || err != nil {
 
@@ -276,9 +280,9 @@ func init() {
 	} else {
 		id = string(bytes)
 	}
-
+*/
 	if id == "" {
-		ErrorLoggerPtr.Fatal("Empty ID.", err)
+		ErrorLoggerPtr.Fatal("Empty ID."/*, err*/)
 	}
 
 	server = &Server{id, ip, REDUCER_PORT, time.Now(), nil, "REDUCER"}

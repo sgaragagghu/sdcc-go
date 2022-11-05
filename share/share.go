@@ -73,6 +73,7 @@ type Job struct {
 	Result map[string]interface{}
 	Keys []string
 	Keys_x_servers map[string]map[string]*Server
+	Keys_x_servers_version int8
 	Delete bool
 }
 

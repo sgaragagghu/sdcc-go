@@ -45,6 +45,7 @@ type task struct {
 	iteration_algorithm string
 	iteration_algorithm_parameters interface{}
 	keys_x_servers *orderedmap.OrderedMap
+	keys_x_servers_version int8
 	jobs map[string]*Job
 	jobs_done map[string]*Job
 }
@@ -121,7 +122,7 @@ func task_injector_goroutine() { // TODO make a jsonrpc interface to send tasks 
 	iteration_parameters[0] =  1 // max_diff (percentage)
 
 	task_ptr := &task{-1, -1, "https://raw.githubusercontent.com/sgaragagghu/sdcc-clustering-datasets/master/sdcc/2d-4c.csv", 1, 10,
-		'\n', ',', 2, "clustering", "clustering", parameters, 1, "clustering", nil, "clustering", iteration_parameters, orderedmap.NewOrderedMap(),
+		'\n', ',', 2, "clustering", "clustering", parameters, 1, "clustering", nil, "clustering", iteration_parameters, orderedmap.NewOrderedMap(), 0,
 		make(map[string]*Job), make(map[string]*Job)}
 
 	// TODO check error and return...
@@ -336,20 +337,27 @@ func scheduler_mapper_goroutine() {
 				}
 
 				if len(task_ptr.jobs) == 0 {
-					InfoLoggerPtr.Println("Task mapper completed, job", job_completed_ptr.Id, "task", job_completed_ptr.Task_id, ".")
+					if task_hashmap.Front().Value == task_ptr {
+						InfoLoggerPtr.Println("Task mapper completed, job", job_completed_ptr.Id, "task", job_completed_ptr.Task_id, ".")
 
-					task_ptr_o, _ := task_hashmap.Get(job_completed_ptr.Task_id) // TODO check error
-					task_ptr := task_ptr_o.(*task)
-
-					select {
-					case Task_reducer_channel <- task_ptr:
 						select {
-						case New_task_reducer_event_channel <- struct{}{}:
+						case Task_reducer_channel <- task_ptr:
+							select {
+							case New_task_reducer_event_channel <- struct{}{}:
+							default:
+								ErrorLoggerPtr.Fatal("Task channel is full")
+							}
 						default:
-							ErrorLoggerPtr.Fatal("Task channel is full")
+							ErrorLoggerPtr.Fatal("Task reduce channel is full")
 						}
-					default:
-						ErrorLoggerPtr.Fatal("Task reduce channel is full")
+					} else {
+						InfoLoggerPtr.Println("Task mapper re - completed, job", job_completed_ptr.Id, "task", job_completed_ptr.Task_id, ".")
+
+						select {
+						case probable_reducer_error_channel <- &map_to_reduce_error{strconv.FormatInt(int64(task_ptr.id), 10), task_ptr.keys_x_servers}:
+						default:
+							ErrorLoggerPtr.Fatal("Probable_reducer_error_channel is full.")
+						}
 					}
 
 					if task_hashmap.Len() < MAX_MAP_TASKS && len(Task_mapper_channel) > 0 { // if the curent task finished and theres a task
@@ -361,8 +369,17 @@ func scheduler_mapper_goroutine() {
 					}
 				}
 			}
+
 		case task_id := <-task_reducer_completed_channel:
 			task_hashmap.Delete(task_id)
+			if task_hashmap.Len() < MAX_MAP_TASKS && len(Task_mapper_channel) > 0 { // if the curent task finished and theres a task
+				select {
+				case New_task_mapper_event_channel <-struct{}{}:
+				default:
+					ErrorLoggerPtr.Fatal("New_task_mapper_event_channel full.")
+				}
+			}
+
 		case <-New_task_mapper_event_channel:
 			process_new_task := false
 			latest_task_map_el := task_hashmap.Front() // TODO check error
@@ -399,7 +416,7 @@ func scheduler_mapper_goroutine() {
 							jobs[i] = &Job{strconv.FormatInt(int64(i), 10), strconv.FormatInt(int64(task_ptr.id), 10),
 								strconv.FormatInt(int64(task_ptr.origin_id), 10), "", task_ptr.resource_link, begin, end, task_ptr.margin,
 								task_ptr.separate_entries, task_ptr.separate_properties, task_ptr.properties_amount,
-								task_ptr.map_algorithm, task_ptr.map_algorithm_parameters, nil, nil,  nil, false}
+								task_ptr.map_algorithm, task_ptr.map_algorithm_parameters, nil, nil,  nil, 0, false}
 							task_ptr.jobs[strconv.FormatInt(int64(i), 10)] = jobs[i]
 						}
 					}
@@ -522,7 +539,7 @@ func iteration_algorithm_clustering(task_ptr *task, new_task_ptr_ptr **task, key
 	*new_task_ptr_ptr = &task{-1, task_ptr.origin_id, task_ptr.resource_link, task_ptr.mappers_amount, task_ptr.margin,
 		task_ptr.separate_entries, task_ptr.separate_properties, task_ptr.properties_amount, task_ptr.initialization_algorithm,
 		task_ptr.map_algorithm, task_ptr.map_algorithm_parameters, task_ptr.reducers_amount, task_ptr.reduce_algorithm,
-		task_ptr.reduce_algorithm_parameters, task_ptr.iteration_algorithm, task_ptr.iteration_algorithm_parameters, orderedmap.NewOrderedMap(),
+		task_ptr.reduce_algorithm_parameters, task_ptr.iteration_algorithm, task_ptr.iteration_algorithm_parameters, orderedmap.NewOrderedMap(), 0,
 		make(map[string]*Job), make(map[string]*Job)}
 	InfoLoggerPtr.Println("Fixpoint not found yet, new_task created")
 
@@ -561,6 +578,17 @@ func iteration_manager(task_ptr *task, keys_x_values map[string]interface{}) {
 	}
 }
 
+
+func assign_job_reducer(server_ptr *Server, job_ptr *Job, working_reducer_hashmap map[string]*Server) {
+
+	job_ptr.Server_id = server_ptr.Id
+	InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to reducer", job_ptr.Server_id)
+	server_ptr.Jobs[job_ptr.Id] = job_ptr
+	go Rpc_job_goroutine(working_reducer_hashmap[server_ptr.Id], job_ptr, "Reducer_handler.Send_job",
+			"Sent reducer job " + job_ptr.Id + " task " + job_ptr.Task_id)
+
+}
+
 func scheduler_reducer_goroutine() {
 	InfoLoggerPtr.Println("Scheduler_reducer_goroutine started.")
 
@@ -574,14 +602,37 @@ func scheduler_reducer_goroutine() {
 	for {
 		select {
 		case error_ptr := <-probable_reducer_error_channel:
-			if error_ptr.keys_x_servers == nil { // have to wait till mapper will produce the new keys_x_servers
+			if error_ptr.keys_x_servers == nil && state == BUSY { // have to wait till mapper will produce the new keys_x_servers
 				if el := task_hashmap.Front(); el != nil {
 					if el.Key.(string) == error_ptr.task_id { state = WAIT }
 				}
 			} else {
-				task_ptr, _ := task_hashmap.Get(error_ptr.Task_id)
-				task_ptr.keys_x_servers = error_ptr.keys_x_servers
-				
+				task_ptr_o, ok := task_hashmap.Get(error_ptr.task_id)
+				if ok {
+					task_ptr := task_ptr_o.(*task)
+					task_ptr.keys_x_servers = error_ptr.keys_x_servers
+					task_ptr.keys_x_servers_version += 1
+					for _, server_ptr := range idle_reducer_hashmap {
+						loop_break := false
+						select {
+						case job_ptr := <-job_channel:
+							if job_ptr.Keys_x_servers_version != task_ptr.keys_x_servers_version {
+								for key, key_content := range job_ptr.Keys_x_servers {
+									servers_map, present := task_ptr.keys_x_servers.Get(key)
+									if !present { ErrorLoggerPtr.Fatal("Key not found.") }
+									key_content = servers_map.(map[string]*Server)
+
+									// BUG compiler thinks i'm not using this variable... ?!?
+									key_content = key_content
+								}
+							}
+							assign_job_reducer(server_ptr, job_ptr, working_reducer_hashmap)
+						default:
+							loop_break = true
+						}
+						if loop_break { break }
+					}
+				}
 			}
 		case rem_reducer_ptr := <-rem_reducer_channel:
 			if _, ok := idle_reducer_hashmap[rem_reducer_ptr.Id]; ok {
@@ -592,11 +643,7 @@ func scheduler_reducer_goroutine() {
 					if state != WAIT && len(idle_reducer_hashmap) > 0 {
 						for server_id, server_ptr := range idle_reducer_hashmap {
 							delete(idle_reducer_hashmap, server_id)
-							job_ptr.Server_id = server_id
-							working_reducer_hashmap[server_id] = server_ptr
-							InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to reducer", job_ptr.Server_id)
-							go Rpc_job_goroutine(server_ptr, job_ptr, "Reducer_handler.Send_job",
-								"Sent reducer job " + job_ptr.Id + " task " + job_ptr.Task_id)
+							assign_job_reducer(server_ptr, job_ptr, working_reducer_hashmap)
 							break
 						}
 					} else {
@@ -617,12 +664,7 @@ func scheduler_reducer_goroutine() {
 			if state != WAIT {
 				select {
 				case job_ptr := <-job_channel:
-					job_ptr.Server_id = add_reducer_ptr.Id
-					working_reducer_hashmap[add_reducer_ptr.Id] = add_reducer_ptr
-					add_reducer_ptr.Jobs[job_ptr.Id] = job_ptr
-					InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to reducer", job_ptr.Server_id)
-					go Rpc_job_goroutine(add_reducer_ptr, job_ptr, "Reducer_handler.Send_job",
-						"Sent reducer job " + job_ptr.Id + " task " + job_ptr.Task_id)
+					assign_job_reducer(add_reducer_ptr, job_ptr, working_reducer_hashmap)
 				default:
 					idle_reducer_hashmap[add_reducer_ptr.Id] = add_reducer_ptr
 				}
@@ -648,11 +690,7 @@ func scheduler_reducer_goroutine() {
 				if state != WAIT {
 					select {
 					case job_ptr := <-job_channel:
-						job_ptr.Server_id = job_completed_ptr.Server_id
-						InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to reducer", job_ptr.Server_id)
-						reducer_job_map_ptr[job_ptr.Id] = job_ptr
-						go Rpc_job_goroutine(working_reducer_hashmap[job_completed_ptr.Server_id], job_ptr, "Reducer_handler.Send_job",
-							"Sent reducer job " + job_ptr.Id + " task " + job_ptr.Task_id)
+						assign_job_reducer(working_reducer_hashmap[job_completed_ptr.Server_id], job_ptr, working_reducer_hashmap)
 					default:
 						idle_reducer_hashmap[job_completed_ptr.Server_id] = working_reducer_hashmap[job_completed_ptr.Server_id]
 						delete(working_reducer_hashmap, job_completed_ptr.Server_id)
@@ -728,18 +766,15 @@ func scheduler_reducer_goroutine() {
 							jobs[i] = &Job{strconv.FormatInt(int64(i), 10), strconv.FormatInt(int64(task_ptr.id), 10),
 								strconv.FormatInt(int64(task_ptr.id), 10), "", "", 0, 0, 0, task_ptr.separate_entries,
 								task_ptr.separate_properties, task_ptr.properties_amount, task_ptr.reduce_algorithm,
-								task_ptr.reduce_algorithm_parameters, nil, nil, keys, false}
+								task_ptr.reduce_algorithm_parameters, nil, nil, keys, 0, false}
 						}
 					}
 					if len(idle_reducer_hashmap) > 0 {
 						i := 0
 						for _, server_ptr := range idle_reducer_hashmap {
-							jobs[i].Server_id = server_ptr.Id
-							working_reducer_hashmap[server_ptr.Id] = server_ptr
-							server_ptr.Jobs[jobs[i].Id] = jobs[i]
-							go Rpc_job_goroutine(server_ptr, jobs[i], "Reducer_handler.Send_job",
-								"Sent reducer job " + jobs[i].Id + " task " + jobs[i].Task_id)
-						i += 1
+
+							assign_job_reducer(server_ptr, jobs[i], working_reducer_hashmap)
+							i += 1
 						}
 					} else {
 						select {
@@ -757,6 +792,8 @@ func scheduler_reducer_goroutine() {
 
 
 func Master_main() {
+
+	rand.Seed(time.Now().UnixNano())
 
 	gob.Register([]interface{}(nil))
 
