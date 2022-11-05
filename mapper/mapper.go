@@ -301,8 +301,8 @@ func init() {
 		ErrorLoggerPtr.Fatal("Empty ID."/*, err*/)
 	}
 
-	server = &Server{id, ip, MAPPER_PORT, time.Now(), nil, "MAPPER"}
-	master = &Server{"", MASTER_IP, MASTER_PORT, time.Now(), nil, "MASTER"}
+	server = &Server{id, ip, MAPPER_PORT, time.Now(), "MAPPER"}
+	master = &Server{"", MASTER_IP, MASTER_PORT, time.Now(), "MASTER"}
 }
 
 func Mapper_main() {

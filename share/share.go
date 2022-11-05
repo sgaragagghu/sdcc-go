@@ -52,7 +52,6 @@ type Server struct {
 	Ip string
 	Port string
 	Last_heartbeat time.Time
-	Jobs map[string]*Job
 	Role string
 }
 

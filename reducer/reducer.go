@@ -285,8 +285,8 @@ func init() {
 		ErrorLoggerPtr.Fatal("Empty ID."/*, err*/)
 	}
 
-	server = &Server{id, ip, REDUCER_PORT, time.Now(), nil, "REDUCER"}
-	master = &Server{"", MASTER_IP, MASTER_PORT, time.Now(), nil, "MASTER"}
+	server = &Server{id, ip, REDUCER_PORT, time.Now(), "REDUCER"}
+	master = &Server{"", MASTER_IP, MASTER_PORT, time.Now(), "MASTER"}
 }
 
 func Reducer_main() {
