@@ -276,7 +276,7 @@ func scheduler_mapper_goroutine() {
 						} else {
 							select {
 							case job_channel <- job_ptr:
-								InfoLoggerPtr.Println("Job", job_ptr.Id, "rescheduled.")
+								InfoLoggerPtr.Println("Mapper job", job_ptr.Id, "rescheduled.")
 							default:
 								ErrorLoggerPtr.Fatal("job_channel queue full") // TODO handle this case...
 							}
@@ -645,7 +645,7 @@ func scheduler_reducer_goroutine() {
 					}
 				}
 			} else {
-				if state == IDLE { state = BUSY }
+				if state == WAIT { state = BUSY }
 				task_ptr_o, ok := task_hashmap.Get(error_ptr.task_id)
 				if ok {
 					task_ptr := task_ptr_o.(*task)
@@ -698,7 +698,7 @@ func scheduler_reducer_goroutine() {
 					} else {
 						select {
 						case job_channel <- job_ptr:
-							InfoLoggerPtr.Println("Job", job_ptr.Id, "rescheduled.")
+							InfoLoggerPtr.Println("Reduce job", job_ptr.Id, "rescheduled.")
 						default:
 							ErrorLoggerPtr.Fatal("job_channel queue full") // TODO handle this case...
 						}
