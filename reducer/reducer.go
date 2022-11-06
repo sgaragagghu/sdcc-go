@@ -107,7 +107,7 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 		req := el.Value.(*Request)
 		req.Time = time.Now()
 		go Rpc_request_goroutine(req.Receiver, req, "Mapper_handler.Get_job_full",
-			"Requesting keys " + fmt.Sprint(req.Body.([]string)) + " from server " + req.Receiver.Id,
+			"Requesting keys " + fmt.Sprint(req.Body.([]string)[1:]) + " of task " + req.Body.([]string)[1] + " from server " + req.Receiver.Id,
 			3, EXPIRE_TIME, true)
 	}
 
