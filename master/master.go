@@ -123,7 +123,7 @@ func task_injector_goroutine() { // TODO make a jsonrpc interface to send tasks 
 	iteration_parameters := make([]interface{}, 1)
 	iteration_parameters[0] =  2 // max_diff (percentage)
 
-	task_ptr := &task{-1, -1, 0, "https://raw.githubusercontent.com/sgaragagghu/sdcc-clustering-datasets/master/sdcc/2d-4c.csv", 1, 10,
+	task_ptr := &task{-1, -1, 0, "https://raw.githubusercontent.com/sgaragagghu/sdcc-clustering-datasets/master/sdcc/2d-4c.csv", 2, 10,
 		'\n', ',', 2, "clustering", "clustering", parameters, 1, "clustering", nil, "clustering", iteration_parameters, orderedmap.NewOrderedMap(), 0,
 		make(map[string]*Job), make(map[string]*Job)}
 
@@ -738,6 +738,13 @@ func scheduler_reducer_goroutine() {
 				job_map[job_completed_ptr.Id] = job_completed_ptr
 			}
 
+
+
+			InfoLoggerPtr.Println("prima")
+			for j, jv := range keys_x_values {
+				InfoLoggerPtr.Println("chiave", j, "value", jv)
+			}
+
 			for key, key_value := range job_completed_ptr.Result {
 				_, ok := keys_x_values[key]
 				if !ok {
@@ -749,6 +756,11 @@ func scheduler_reducer_goroutine() {
 				}
 			}
 
+
+			InfoLoggerPtr.Println("dopo")
+			for j, jv := range keys_x_values {
+				InfoLoggerPtr.Println("chiave", j, "value", jv)
+			}
 
 			delete(task_ptr.jobs, job_completed_ptr.Id)
 			task_ptr.jobs_done[job_completed_ptr.Id] = job_completed_ptr
