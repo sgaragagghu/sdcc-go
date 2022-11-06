@@ -115,6 +115,10 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 	select {
 		case job_full := <-Job_full_channel: // type: Request
 		requests_map.Delete(job_full.Sender.Id)
+		InfoLoggerPtr.Println("prima, keys_x_values")
+		for i, v := range keys_x_values {
+			InfoLoggerPtr.Println("chaive", i, "value", v)
+		}
 		for i, v := range job_full.Body.(map[string]interface{}) {
 			_, ok := keys_x_values[i]
 			if !ok {
@@ -124,7 +128,12 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 					keys_x_values[i][index] = value2
 				}
 			}
+		}
 
+
+		InfoLoggerPtr.Println("dopo")
+		for i, v := range keys_x_values {
+			InfoLoggerPtr.Println("chaive", i, "value", v)
 		}
 
 	//case time.After():
