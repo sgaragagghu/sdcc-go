@@ -107,7 +107,8 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 		req := el.Value.(*Request)
 		req.Time = time.Now()
 		go Rpc_request_goroutine(req.Receiver, req, "Mapper_handler.Get_job_full",
-			"Requesting keys " + fmt.Sprint(req.Body.([]string)) + " from server " + req.Receiver.Id)
+			"Requesting keys " + fmt.Sprint(req.Body.([]string)) + " from server " + req.Receiver.Id,
+			3, EXPIRE_TIME, true)
 	}
 
 
@@ -202,7 +203,8 @@ func task_manager_goroutine() {
 			}
 			// TODO add and manage errors
 			go Rpc_job_goroutine(master, job_finished_ptr, "Master_handler.Job_reducer_completed",
-				"Sent completed job " + job_finished_ptr.Id + " of task " + job_finished_ptr.Task_id)
+				"Sent completed job " + job_finished_ptr.Id + " of task " + job_finished_ptr.Task_id,
+				3, EXPIRE_TIME, true)
 
 			state = IDLE
 

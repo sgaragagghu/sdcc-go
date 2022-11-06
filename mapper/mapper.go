@@ -149,7 +149,8 @@ func prepare_and_send_job_full_goroutine(request_ptr *Request, jobs_hashmap map[
 
 	req := &Request{server, request_ptr.Sender, 0, time.Now(), keys_x_values}
 	go Rpc_request_goroutine(req.Receiver, req, "Reducer_handler.Send_job_full",
-		"Sent job full " + request_ptr.Body.([]string)[0] + " to the reducer " + req.Receiver.Id)
+		"Sent job full " + request_ptr.Body.([]string)[0] + " to the reducer " + req.Receiver.Id,
+		3, EXPIRE_TIME, true)
 
 }
 
@@ -213,7 +214,8 @@ func task_manager_goroutine() {
 			job_light := *job_finished_ptr
 			job_light.Result = nil
 			// TODO add and manage erros
-			go Rpc_job_goroutine(master, &job_light, "Master_handler.Job_mapper_completed", "Completed job sent to the master.")
+			go Rpc_job_goroutine(master, &job_light, "Master_handler.Job_mapper_completed", "Completed job sent to the master.",
+				3, EXPIRE_TIME, true)
 
 			state = IDLE
 

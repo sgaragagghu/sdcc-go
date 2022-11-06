@@ -187,10 +187,19 @@ func heartbeat_goroutine() {
 					if !linked_hashmap.Delete(server_temp_ptr.Id) {
 						ErrorLoggerPtr.Fatal("Unexpected error")
 					}
-					select {
-					case rem_mapper_channel <-server_temp_ptr:
-					default:
-						ErrorLoggerPtr.Fatal("Rem_mapper_channel is full")
+					if server_temp_ptr.Role == MAPPER {
+						select {
+						case rem_mapper_channel <-server_temp_ptr:
+						default:
+							ErrorLoggerPtr.Fatal("Rem_mapper_channel is full")
+						}
+					} else if server_temp_ptr.Role == REDUCER {
+
+						select {
+						case rem_reducer_channel <-server_temp_ptr:
+						default:
+							ErrorLoggerPtr.Fatal("Rem_reducer_channel is full")
+						}
 					}
 				}
 			}
@@ -212,7 +221,8 @@ func assign_job_mapper(server_ptr *Server, job_ptr *Job, working_mapper_hashmap 
 	}
 	InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to mapper", job_ptr.Server_id)
 	go Rpc_job_goroutine(server_ptr, job_ptr, "Mapper_handler.Send_job",
-		"Sent mapper job " + job_ptr.Id + " task " + job_ptr.Task_id)
+		"Sent mapper job " + job_ptr.Id + " task " + job_ptr.Task_id,
+		3, EXPIRE_TIME, false)
 }
 
 func scheduler_mapper_goroutine() {
@@ -606,7 +616,8 @@ func assign_job_reducer(server_ptr *Server, job_ptr *Job, working_reducer_hashma
 		job_map[job_ptr.Id] = job_ptr
 	}
 	go Rpc_job_goroutine(server_ptr, job_ptr, "Reducer_handler.Send_job",
-			"Sent reducer job " + job_ptr.Id + " task " + job_ptr.Task_id)
+			"Sent reducer job " + job_ptr.Id + " task " + job_ptr.Task_id,
+			3, EXPIRE_TIME, false)
 
 }
 
