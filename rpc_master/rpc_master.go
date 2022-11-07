@@ -8,6 +8,7 @@ import (
 
 const (
 	MASTER_PORT = "9999"
+	MASTER_PORT_JSON_RPC = "8080"
 )
 
 var (
@@ -33,3 +34,6 @@ func (h Master_handler) Job_reducer_completed(args *Job, reply *int) error {
 	Job_reducer_completed_channel <- args
 	return nil
 }
+
+// create a type to get an interface for JSONRPC
+type JSONServer struct{}

@@ -5,7 +5,9 @@ import (
 	. "../rpc_master"
 //	. "../rpc_mapper"
 	"net"
-	"net/rpc"
+	go_rpc "net/rpc"
+	"net/http"
+	//"net/rpc/jsonrpc"
 	"reflect"
 	"time"
 	"encoding/gob"
@@ -17,6 +19,10 @@ import (
 	"bufio"
 
 	"github.com/elliotchance/orderedmap"
+
+	"github.com/gorilla/mux"
+	"github.com/gorilla/rpc"
+	"github.com/gorilla/rpc/json"
 )
 
 
@@ -123,8 +129,8 @@ func task_injector_goroutine() { // TODO make a jsonrpc interface to send tasks 
 	iteration_parameters := make([]interface{}, 1)
 	iteration_parameters[0] =  2 // max_diff (percentage)
 
-	task_ptr := &task{-1, -1, 0, "https://raw.githubusercontent.com/sgaragagghu/sdcc-clustering-datasets/master/sdcc/2d-4c.csv", 2, 10,
-		'\n', ',', 2, "clustering", "clustering", parameters, 1, "clustering", nil, "clustering", iteration_parameters, orderedmap.NewOrderedMap(), 0,
+	task_ptr := &task{-1, -1, 0, "https://raw.githubusercontent.com/sgaragagghu/sdcc-clustering-datasets/master/sdcc/2d-4c.csv", 1, 10,
+		'\n', ',', 2, "clustering", "clustering", parameters, 2, "clustering", nil, "clustering", iteration_parameters, orderedmap.NewOrderedMap(), 0,
 		make(map[string]*Job), make(map[string]*Job)}
 
 	// TODO check error and return...
@@ -874,6 +880,17 @@ func scheduler_reducer_goroutine() {
 }
 
 
+func json_rpc_manager_goroutine() {
+	InfoLoggerPtr.Println("Starting json rpc goroutine")
+	s := rpc.NewServer()
+	s.RegisterCodec(json.NewCodec(), "application/json")
+	s.RegisterService(new(JSONServer), "")
+
+	r := mux.NewRouter()
+	r.Handle("/rpc", s)
+	ErrorLoggerPtr.Fatal(http.ListenAndServe(":" + MASTER_PORT_JSON_RPC, r))
+}
+
 func Master_main() {
 
 	rand.Seed(time.Now().UnixNano())
@@ -927,11 +944,12 @@ func Master_main() {
 	go heartbeat_goroutine()
 	go task_injector_goroutine()
 
-
 	master_handler := new(Master_handler)
 
 	// register Master_handler as RPC interface
-	rpc.Register(master_handler)
+	go_rpc.Register(master_handler)
+
+	go json_rpc_manager_goroutine()
 
 	// service address of server
 	service := ":" + MASTER_PORT
@@ -959,7 +977,7 @@ func Master_main() {
 		InfoLoggerPtr.Println("received message", reflect.TypeOf(conn), conn)
 
 		// handle client connections via rpc
-		go rpc.ServeConn(conn)
+		go go_rpc.ServeConn(conn)
 	}
 
 }
