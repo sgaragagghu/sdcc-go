@@ -151,9 +151,9 @@ func Rpc_job_goroutine(server_ptr *Server, job_ptr *Job, method string, log_mess
 	err = client.Call(method, job_ptr, &reply)
 	if err != nil {
 		if error_is_fatal {
-			ErrorLoggerPtr.Fatal(method, "error", err)
+			ErrorLoggerPtr.Fatal(method, " error ", err)
 		} else {
-			ErrorLoggerPtr.Println(method, "error", err)
+			ErrorLoggerPtr.Println(method, " error ", err)
 		}
 	}
 	InfoLoggerPtr.Println(log_message)
