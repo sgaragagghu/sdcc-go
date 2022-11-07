@@ -738,13 +738,6 @@ func scheduler_reducer_goroutine() {
 				job_map[job_completed_ptr.Id] = job_completed_ptr
 			}
 
-
-
-			InfoLoggerPtr.Println("prima")
-			for j, jv := range keys_x_values {
-				InfoLoggerPtr.Println("chiave", j, "value", jv)
-			}
-
 			for key, key_value := range job_completed_ptr.Result {
 				_, ok := keys_x_values[key]
 				if !ok {
@@ -754,12 +747,6 @@ func scheduler_reducer_goroutine() {
 						keys_x_values[key].([]float64)[hidden_index] = hidden_value
 					}
 				}
-			}
-
-
-			InfoLoggerPtr.Println("dopo")
-			for j, jv := range keys_x_values {
-				InfoLoggerPtr.Println("chiave", j, "value", jv)
 			}
 
 			delete(task_ptr.jobs, job_completed_ptr.Id)
