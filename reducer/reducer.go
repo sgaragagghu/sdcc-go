@@ -127,7 +127,7 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 			}
 			if requests_map.Len() == 0 { loop = false }
 
-		case <-time.After(3 * EXPIRE_TIME):
+		case <-time.After(3 * EXPIRE_TIME * SECOND):
 			req := requests_map.Front().Value.(*Request)
 			reply := Rpc_request_goroutine(req.Receiver, req, "Mapper_handler.Are_you_alive",
 				"Waiting time expired, checking if the mapper " + req.Receiver.Id + " is alive.",

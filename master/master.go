@@ -857,6 +857,7 @@ func scheduler_reducer_goroutine() {
 
 							assign_job_reducer(server_ptr, jobs[i], working_reducer_hashmap, servers_x_tasks_x_jobs)
 							i += 1
+							if i > len(jobs) - 1 { break }
 						}
 					} else {
 						select {
