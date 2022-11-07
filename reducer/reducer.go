@@ -139,13 +139,6 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 				InfoLoggerPtr.Println("Mapper", req.Receiver.Id, "still alive.")
 			}
 		}
-
-
-		InfoLoggerPtr.Println("dopo")
-		for i, v := range keys_x_values {
-			InfoLoggerPtr.Println("chaive", i, "value", v)
-
-		}
 	}
 	keys := make([]string, 1)
 
