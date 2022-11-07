@@ -25,7 +25,6 @@ import (
 )
 
 var (
-	server *Server
 	master *Server
 	stub_storage StubMapping
 )
@@ -38,8 +37,8 @@ func heartbeat_goroutine(client *rpc.Client) {
 	)
 
 	for {
-		server.Last_heartbeat = time.Now()
-		err = client.Call("Master_handler.Send_heartbeat", server, &reply)
+		This_server.Last_heartbeat = time.Now()
+		err = client.Call("Master_handler.Send_heartbeat", This_server, &reply)
 		if err != nil {
 			ErrorLoggerPtr.Fatal("Heartbeat error:", err)
 		}
@@ -147,7 +146,7 @@ func prepare_and_send_job_full_goroutine(request_ptr *Request, jobs_hashmap map[
 		}
 	}
 
-	req := &Request{server, request_ptr.Sender, 0, time.Now(), keys_x_values}
+	req := &Request{This_server, request_ptr.Sender, 0, time.Now(), keys_x_values}
 	go Rpc_request_goroutine(req.Receiver, req, "Reducer_handler.Send_job_full",
 		"Sent job full " + request_ptr.Body.([]string)[0] + " to the reducer " + req.Receiver.Id)
 
@@ -301,7 +300,7 @@ func init() {
 		ErrorLoggerPtr.Fatal("Empty ID."/*, err*/)
 	}
 
-	server = &Server{id, ip, MAPPER_PORT, time.Now(), "MAPPER"}
+	This_server = &Server{id, ip, MAPPER_PORT, time.Now(), "MAPPER"}
 	master = &Server{"", MASTER_IP, MASTER_PORT, time.Now(), "MASTER"}
 }
 

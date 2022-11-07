@@ -110,26 +110,34 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 			"Requesting keys " + fmt.Sprint(req.Body.([]string)) + " from server " + req.Receiver.Id)
 	}
 
-
-	select {
-		case job_full := <-Job_full_channel: // type: Request
-		requests_map.Delete(job_full.Sender.Id)
-		for i, v := range job_full.Body.(map[string]interface{}) {
-			_, ok := keys_x_values[i]
-			if !ok {
-				keys_x_values[i] = v.(map[string]struct{})
-			} else {
-				for index, value2 := range v.(map[string]struct{}) {
-					keys_x_values[i][index] = value2
+	for loop := true; loop; {
+		select {
+			case job_full := <-Job_full_channel: // type: Request
+			requests_map.Delete(job_full.Sender.Id)
+			for i, v := range job_full.Body.(map[string]interface{}) {
+				_, ok := keys_x_values[i]
+				if !ok {
+					keys_x_values[i] = v.(map[string]struct{})
+				} else {
+					for index, value2 := range v.(map[string]struct{}) {
+						keys_x_values[i][index] = value2
+					}
 				}
+
 			}
+			if requests_map.Len() == 0 { loop = false }
 
+		case <-time.After(3 * EXPIRE_TIME):
+			req := requests_map.Front().Value.(*Request)
+			reply := Rpc_request_goroutine(req.Receiver, req, "Mapper_handler.Are_you_alive",
+			"Waiting time expired, checking if the mapper " + req.Receiver.Id + " is alive.")
+			if reply == nil || reply.(bool) == false {
+				ErrorLoggerPtr.Fatal("Mapper", req.Receiver.Id, "doesn't answer.")
+			} else {
+				InfoLoggerPtr.Println("Mapper", req.Receiver.Id, "still alive.")
+			}
 		}
-
-	//case time.After():
-		// TODO Check for a time bound and retry,  
 	}
-
 	keys := make([]string, 1)
 
 	// TODO check the error

@@ -25,6 +25,8 @@ const (
 	WAIT = "WAIT"
 )
 
+const EXPIRE_TIME = 10
+
 const APP_ID = "SDCC"
 
 const MASTER_IP = "172.18.0.254"
@@ -85,7 +87,7 @@ func init() {
 }
 
 
-func Rpc_request_goroutine(server *Server, load *Request, method string,  log_message string) {
+func Rpc_request_goroutine(server *Server, load *Request, method string,  log_message string) (interface{}) {
 
 	// TODO probably it is needed to use the already connection which is in place for the heartbeat
 
@@ -96,13 +98,14 @@ func Rpc_request_goroutine(server *Server, load *Request, method string,  log_me
 		ErrorLoggerPtr.Fatal(err)
 	}
 
-	var reply int
+	var reply interface{}
 
 	err = client.Call(method, load, &reply)
 	if err != nil {
 		ErrorLoggerPtr.Fatal(method, "error", err)
 	}
 	InfoLoggerPtr.Println(log_message)
+	return reply
 }
 
 

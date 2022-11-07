@@ -10,6 +10,8 @@ import (
 const MAPPER_PORT = "6668"
 
 var (
+
+	This_server *Server
 	Job_channel chan *Job
 	Job_full_request_channel chan *Request
 )
@@ -24,5 +26,10 @@ func (h Mapper_handler) Send_job(args *Job, reply *int) error {
 
 func (h Mapper_handler) Get_job_full(args *Request, reply *int) error {
 	Job_full_request_channel <- args
+	return nil
+}
+
+func (h Mapper_handler) Are_you_alive(args *Request, reply *interface{}) error {
+	*reply = args.Receiver.Id == This_server.Id
 	return nil
 }

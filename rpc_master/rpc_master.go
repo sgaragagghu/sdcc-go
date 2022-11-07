@@ -7,7 +7,6 @@ import (
 )
 
 const (
-	EXPIRE_TIME = 10
 	MASTER_PORT = "9999"
 )
 
