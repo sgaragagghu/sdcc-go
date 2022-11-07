@@ -21,7 +21,7 @@ func (h Reducer_handler) Send_job(args *Job, reply *int) error {
 	return nil
 }
 
-func (h Reducer_handler) Send_job_full(args *Request, reply *int) error {
+func (h Reducer_handler) Send_job_full(args *Request, reply *interface{}) error {
 	Job_full_channel <- args
 	return nil
 }
