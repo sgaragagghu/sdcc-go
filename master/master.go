@@ -123,7 +123,7 @@ func task_injector_goroutine() { // TODO make a jsonrpc interface to send tasks 
 	iteration_parameters := make([]interface{}, 1)
 	iteration_parameters[0] =  2 // max_diff (percentage)
 
-	task_ptr := &task{-1, -1, 0, "https://raw.githubusercontent.com/sgaragagghu/sdcc-clustering-datasets/master/sdcc/2d-4c.csv", 1, 10,
+	task_ptr := &task{-1, -1, 0, "https://raw.githubusercontent.com/sgaragagghu/sdcc-clustering-datasets/master/sdcc/2d-4c.csv", 2, 10,
 		'\n', ',', 2, "clustering", "clustering", parameters, 1, "clustering", nil, "clustering", iteration_parameters, orderedmap.NewOrderedMap(), 0,
 		make(map[string]*Job), make(map[string]*Job)}
 
@@ -187,10 +187,19 @@ func heartbeat_goroutine() {
 					if !linked_hashmap.Delete(server_temp_ptr.Id) {
 						ErrorLoggerPtr.Fatal("Unexpected error")
 					}
-					select {
-					case rem_mapper_channel <-server_temp_ptr:
-					default:
-						ErrorLoggerPtr.Fatal("Rem_mapper_channel is full")
+					if server_temp_ptr.Role == MAPPER {
+						select {
+						case rem_mapper_channel <-server_temp_ptr:
+						default:
+							ErrorLoggerPtr.Fatal("Rem_mapper_channel is full")
+						}
+					} else if server_temp_ptr.Role == REDUCER {
+
+						select {
+						case rem_reducer_channel <-server_temp_ptr:
+						default:
+							ErrorLoggerPtr.Fatal("Rem_reducer_channel is full")
+						}
 					}
 				}
 			}
@@ -212,7 +221,8 @@ func assign_job_mapper(server_ptr *Server, job_ptr *Job, working_mapper_hashmap 
 	}
 	InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to mapper", job_ptr.Server_id)
 	go Rpc_job_goroutine(server_ptr, job_ptr, "Mapper_handler.Send_job",
-		"Sent mapper job " + job_ptr.Id + " task " + job_ptr.Task_id)
+		"Sent mapper job " + job_ptr.Id + " task " + job_ptr.Task_id,
+		3, EXPIRE_TIME, false)
 }
 
 func scheduler_mapper_goroutine() {
@@ -266,7 +276,7 @@ func scheduler_mapper_goroutine() {
 						} else {
 							select {
 							case job_channel <- job_ptr:
-								InfoLoggerPtr.Println("Job", job_ptr.Id, "rescheduled.")
+								InfoLoggerPtr.Println("Mapper job", job_ptr.Id, "rescheduled.")
 							default:
 								ErrorLoggerPtr.Fatal("job_channel queue full") // TODO handle this case...
 							}
@@ -606,7 +616,8 @@ func assign_job_reducer(server_ptr *Server, job_ptr *Job, working_reducer_hashma
 		job_map[job_ptr.Id] = job_ptr
 	}
 	go Rpc_job_goroutine(server_ptr, job_ptr, "Reducer_handler.Send_job",
-			"Sent reducer job " + job_ptr.Id + " task " + job_ptr.Task_id)
+			"Sent reducer job " + job_ptr.Id + " task " + job_ptr.Task_id,
+			3, EXPIRE_TIME, false)
 
 }
 
@@ -634,7 +645,7 @@ func scheduler_reducer_goroutine() {
 					}
 				}
 			} else {
-				if state == IDLE { state = BUSY }
+				if state == WAIT { state = BUSY }
 				task_ptr_o, ok := task_hashmap.Get(error_ptr.task_id)
 				if ok {
 					task_ptr := task_ptr_o.(*task)
@@ -687,7 +698,7 @@ func scheduler_reducer_goroutine() {
 					} else {
 						select {
 						case job_channel <- job_ptr:
-							InfoLoggerPtr.Println("Job", job_ptr.Id, "rescheduled.")
+							InfoLoggerPtr.Println("Reduce job", job_ptr.Id, "rescheduled.")
 						default:
 							ErrorLoggerPtr.Fatal("job_channel queue full") // TODO handle this case...
 						}
@@ -727,6 +738,13 @@ func scheduler_reducer_goroutine() {
 				job_map[job_completed_ptr.Id] = job_completed_ptr
 			}
 
+
+
+			InfoLoggerPtr.Println("prima")
+			for j, jv := range keys_x_values {
+				InfoLoggerPtr.Println("chiave", j, "value", jv)
+			}
+
 			for key, key_value := range job_completed_ptr.Result {
 				_, ok := keys_x_values[key]
 				if !ok {
@@ -738,6 +756,11 @@ func scheduler_reducer_goroutine() {
 				}
 			}
 
+
+			InfoLoggerPtr.Println("dopo")
+			for j, jv := range keys_x_values {
+				InfoLoggerPtr.Println("chiave", j, "value", jv)
+			}
 
 			delete(task_ptr.jobs, job_completed_ptr.Id)
 			task_ptr.jobs_done[job_completed_ptr.Id] = job_completed_ptr

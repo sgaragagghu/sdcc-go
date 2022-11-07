@@ -107,7 +107,8 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 		req := el.Value.(*Request)
 		req.Time = time.Now()
 		go Rpc_request_goroutine(req.Receiver, req, "Mapper_handler.Get_job_full",
-			"Requesting keys " + fmt.Sprint(req.Body.([]string)) + " from server " + req.Receiver.Id)
+			"Requesting keys " + fmt.Sprint(req.Body.([]string)[1:]) + " of task " + req.Body.([]string)[0] + " from server " + req.Receiver.Id,
+			3, EXPIRE_TIME, true)
 	}
 
 	for loop := true; loop; {
@@ -123,19 +124,27 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 						keys_x_values[i][index] = value2
 					}
 				}
-
 			}
 			if requests_map.Len() == 0 { loop = false }
 
 		case <-time.After(3 * EXPIRE_TIME):
 			req := requests_map.Front().Value.(*Request)
 			reply := Rpc_request_goroutine(req.Receiver, req, "Mapper_handler.Are_you_alive",
-			"Waiting time expired, checking if the mapper " + req.Receiver.Id + " is alive.")
+				"Waiting time expired, checking if the mapper " + req.Receiver.Id + " is alive.",
+				3, EXPIRE_TIME, true)
+
 			if reply == nil || reply.(bool) == false {
 				ErrorLoggerPtr.Fatal("Mapper", req.Receiver.Id, "doesn't answer.")
 			} else {
 				InfoLoggerPtr.Println("Mapper", req.Receiver.Id, "still alive.")
 			}
+		}
+
+
+		InfoLoggerPtr.Println("dopo")
+		for i, v := range keys_x_values {
+			InfoLoggerPtr.Println("chaive", i, "value", v)
+
 		}
 	}
 	keys := make([]string, 1)
@@ -210,7 +219,8 @@ func task_manager_goroutine() {
 			}
 			// TODO add and manage errors
 			go Rpc_job_goroutine(master, job_finished_ptr, "Master_handler.Job_reducer_completed",
-				"Sent completed job " + job_finished_ptr.Id + " of task " + job_finished_ptr.Task_id)
+				"Sent completed job " + job_finished_ptr.Id + " of task " + job_finished_ptr.Task_id,
+				3, EXPIRE_TIME, true)
 
 			state = IDLE
 

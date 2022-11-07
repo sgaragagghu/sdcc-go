@@ -86,44 +86,76 @@ func init() {
 
 }
 
-
-func Rpc_request_goroutine(server *Server, load *Request, method string,  log_message string) (interface{}) {
+func Rpc_request_goroutine(server *Server, load *Request, method string,  log_message string, retry int, delay time.Duration, error_is_fatal bool) (interface{}) {
 
 	// TODO probably it is needed to use the already connection which is in place for the heartbeat
 
 	// connect to server via rpc tcp
-	client, err := rpc.Dial("tcp", server.Ip + ":" + server.Port)
+	var client *rpc.Client
+	var err error = nil
+	for ; retry > 0; retry -= 1 {
+		client, err = rpc.Dial("tcp", server.Ip + ":" + server.Port)
+		if err == nil {
+			break
+		} else {
+			WarningLoggerPtr.Println("rpc dial, server", server.Id, "connection try", retry, "failed", err)
+			time.Sleep(delay * SECOND)
+		}
+	}
 	defer client.Close()
 	if err != nil {
-		ErrorLoggerPtr.Fatal(err)
+		if error_is_fatal {
+			ErrorLoggerPtr.Fatal(err)
+		} else {
+			ErrorLoggerPtr.Println(err)
+		}
 	}
 
 	var reply interface{}
 
-	err = client.Call(method, load, &reply)
+	for ; retry > 0; retry -= 1 {
+		err = client.Call(method, load, &reply)
+		if err == nil {
+			break
+		} else {
+			WarningLoggerPtr.Println("rpc call, server", server.Id, "connection try", retry, "failed", err)
+			time.Sleep(delay * SECOND)
+		}
+	}
 	if err != nil {
-		ErrorLoggerPtr.Fatal(method, "error", err)
+		if error_is_fatal {
+			ErrorLoggerPtr.Fatal(method, "error", err)
+		} else {
+			ErrorLoggerPtr.Println(method, "error", err)
+		}
 	}
 	InfoLoggerPtr.Println(log_message)
 	return reply
 }
 
 
-func Rpc_job_goroutine(server_ptr *Server, job_ptr *Job, method string, log_message string) {
+func Rpc_job_goroutine(server_ptr *Server, job_ptr *Job, method string, log_message string, retry int, delay time.Duration, error_is_fatal bool) {
 	// connect to mapper via rpc tcp
 	client, err := rpc.Dial("tcp", server_ptr.Ip + ":" + server_ptr.Port)
 	defer client.Close()
 	if err != nil {
-		ErrorLoggerPtr.Fatal(err)
+		if error_is_fatal {
+			ErrorLoggerPtr.Fatal(err)
+		} else {
+			ErrorLoggerPtr.Println(err)
+		}
 	}
 
 	var reply int
 
 	err = client.Call(method, job_ptr, &reply)
 	if err != nil {
-		ErrorLoggerPtr.Fatal(method, "error:", err)
+		if error_is_fatal {
+			ErrorLoggerPtr.Fatal(method, "error", err)
+		} else {
+			ErrorLoggerPtr.Println(method, "error", err)
+		}
 	}
 	InfoLoggerPtr.Println(log_message)
-
 }
 
