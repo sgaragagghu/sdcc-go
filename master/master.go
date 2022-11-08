@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"bytes"
 	"bufio"
+	"fmt"
 
 	"github.com/elliotchance/orderedmap"
 
@@ -567,7 +568,7 @@ func iteration_algorithm_clustering(task_ptr *task, new_task_ptr_ptr **task, key
 
 				for loop := true; loop ; {
 					select {
-					case Result_for_JRPC_channel<-result_string:
+					case Result_for_JRPC_channel<-&result_string:
 						loop = false
 					default:
 						WarningLoggerPtr.Println("Result for JRPC channel is full, popping one element.")
@@ -943,8 +944,7 @@ func json_rpc_manager_goroutine() {
 
 func Master_main() {
 
-	Status_ptr := &Status{0, 0}
-	Status_ptr = Status_ptr
+	Status_ptr = &Status{0, 0}
 
 	rand.Seed(time.Now().UnixNano())
 
@@ -994,7 +994,7 @@ func Master_main() {
 
 	Task_from_JRPC_channel = make(chan *[]interface{}, 1000)
 
-	Result_for_JRPC_channel = make(chan *[]interface{}, 1000)
+	Result_for_JRPC_channel = make(chan *string, 1000)
 
 	go scheduler_reducer_goroutine()
 	go scheduler_mapper_goroutine()

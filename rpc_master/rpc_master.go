@@ -25,8 +25,8 @@ var (
 
 
 type Status struct {
-	Mapper_amount int
-	Reducer_amount int
+	Mapper_amount int `json:"mapper_amount"`
+	Reducer_amount int `json:"reducer_amount"`
 }
 /*
 type status_json struct {
@@ -55,13 +55,17 @@ func (h Master_handler) Job_reducer_completed(args *Job, reply *int) error {
 // create a type to get an interface for JSONRPC
 type JSONServer struct{}
 
-func (h JSONServer) Get_status(r *http.Request, args *struct{}, reply []byte) error {
+func (h JSONServer) Get_status(r *http.Request, args *struct{}, reply *Status) error {
 	stat := *Status_ptr
-	reply, err := json_parse.Marshal(stat)
+	reply = &stat
+	/*
+	full_bytes, err := json_parse.Marshal(stat)
+	full_string := string(full_bytes)
+	reply = full_string
 	if err != nil {
 		ErrorLoggerPtr.Println("Get_status failed",  err)
 	}
-
+*/
 	return nil
 }
 
@@ -85,21 +89,31 @@ func (h JSONServer) Send_task(r *http.Request, args *[]byte, reply bool) error {
 }
 
 
-func (h JSONServer) Get_results(r *http.Request, args *struct{}, reply []byte) error {
+func (h JSONServer) Get_results(r *http.Request, _ *int, reply *[]byte) error {
 	results := ""
 
 	for loop := true; loop; {
 		select {
 		case result := <-Result_for_JRPC_channel:
-			results += result
+			results += *result
 		default:
 			loop = false
 		}
 	}
-	reply, err := json_parse.Marshal(results)
+	full_string, err := json_parse.Marshal(results)
+	reply = &full_string
 	if err != nil {
 		ErrorLoggerPtr.Println("Get_results failed",  err)
 	}
+
+	return nil
+}
+
+
+
+func (h JSONServer) Test(r *http.Request, args *int, reply *int) error {
+	n:= 3
+	reply = &n
 
 	return nil
 }
