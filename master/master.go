@@ -116,6 +116,8 @@ func initialization_algorithm_clustering(task_ptr *task) (ret bool) {
 
 func task_injector_goroutine() { // TODO make a jsonrpc interface to send tasks from a browser or curl 
 
+	// Test task
+
 	time.Sleep(60 * SECOND)
 
 	parameters := make([]interface{}, 5)
@@ -129,7 +131,7 @@ func task_injector_goroutine() { // TODO make a jsonrpc interface to send tasks 
 	iteration_parameters := make([]interface{}, 1)
 	iteration_parameters[0] =  2 // max_diff (percentage)
 
-	task_ptr := &task{-1, -1, 0, "https://raw.githubusercontent.com/sgaragagghu/sdcc-clustering-datasets/master/sdcc/2d-4c.csv", 1, 10,
+	task_ptr := &task{-1, -1, 0, "https://raw.githubusercontent.com/sgaragagghu/sdcc-clustering-datasets/master/sdcc/2d-4c.csv", 2, 10,
 		'\n', ',', 2, "clustering", "clustering", parameters, 2, "clustering", nil, "clustering", iteration_parameters, orderedmap.NewOrderedMap(), 0,
 		make(map[string]*Job), make(map[string]*Job)}
 
@@ -148,6 +150,35 @@ func task_injector_goroutine() { // TODO make a jsonrpc interface to send tasks 
 	}
 
 	InfoLoggerPtr.Println("Task correctly injected")
+
+
+	for {
+		select {
+		case slice := <-Task_from_JRPC_channel:
+			reply := false
+			task_bytes := (*slice)[1]
+			task_bytes = task_bytes // TODO remove
+		// TODO: preparation algorithm
+
+			select {
+			case Task_mapper_channel <- task_ptr:
+				select {
+				case New_task_mapper_event_channel <- struct{}{}:
+					reply = true
+				default:
+					WarningLoggerPtr.Fatal("Task channel is full")
+				}
+			default:
+				WarningLoggerPtr.Fatal("Task channel is full")
+			}
+
+			select {
+			case (*slice)[0].(chan bool)<-reply:
+			default:
+				WarningLoggerPtr.Println("Reply channel is full.")
+			}
+		}
+	}
 }
 
 func heartbeat_goroutine() {
@@ -172,12 +203,14 @@ func heartbeat_goroutine() {
 				if server_temp_ptr.Role == MAPPER {
 					select {
 					case add_mapper_channel <-server_temp_ptr:
+						Status_ptr.Mapper_amount += 1
 					default:
 						ErrorLoggerPtr.Fatal("Add_mapper_channel is full")
 					}
 				} else if server_temp_ptr.Role == REDUCER {
 					select {
 					case add_reducer_channel <-server_temp_ptr:
+						Status_ptr.Reducer_amount += 1
 					default:
 						ErrorLoggerPtr.Fatal("Add_reducer_channel is full")
 					}
@@ -196,6 +229,7 @@ func heartbeat_goroutine() {
 					if server_temp_ptr.Role == MAPPER {
 						select {
 						case rem_mapper_channel <-server_temp_ptr:
+							Status_ptr.Mapper_amount -= 1
 						default:
 							ErrorLoggerPtr.Fatal("Rem_mapper_channel is full")
 						}
@@ -203,6 +237,7 @@ func heartbeat_goroutine() {
 
 						select {
 						case rem_reducer_channel <-server_temp_ptr:
+							Status_ptr.Reducer_amount -= 1
 						default:
 							ErrorLoggerPtr.Fatal("Rem_reducer_channel is full")
 						}
@@ -511,7 +546,7 @@ func iteration_algorithm_clustering_deep_equal(a map[string]interface{}, b map[s
 	return true
 }
 
-func iteration_algorithm_clustering(task_ptr *task, new_task_ptr_ptr **task, keys_x_values map[string]interface{}) (bool) {
+func iteration_algorithm_clustering(task_ptr *task, new_task_ptr_ptr **task, keys_x_values map[string]interface{}, result_channel chan *string) (bool) {
 /*
 	if task_ptr.iteration_algorithm_parameters == nil {
 		task_ptr.iteration_algorithm_parameters = make([]interface{}, 0)
@@ -524,9 +559,24 @@ func iteration_algorithm_clustering(task_ptr *task, new_task_ptr_ptr **task, key
 
 		if iteration_algorithm_clustering_deep_equal(old_keys_x_values, keys_x_values, task_ptr.iteration_algorithm_parameters.([]interface{})[0].(int)) {
 			InfoLoggerPtr.Println("Fixpoint found, iteration concluded")
+			result_string := fmt.Sprintln("Task", task_ptr.id, "origin task", task_ptr.origin_id, "result:")
 			for key, key_value_o := range keys_x_values {
 				key_value := key_value_o.([]float64)
-				InfoLoggerPtr.Println("key", key, "value", key_value)
+				result_string += fmt.Sprintln("key", key, "value", key_value)
+				InfoLoggerPtr.Printf(result_string)
+
+				for loop := true; loop ; {
+					select {
+					case Result_for_JRPC_channel<-result_string:
+						loop = false
+					default:
+						WarningLoggerPtr.Println("Result for JRPC channel is full, popping one element.")
+						select {
+						case <-Result_for_JRPC_channel:
+						default:
+						}
+					}
+				}
 
 			}
 			return true
@@ -893,6 +943,9 @@ func json_rpc_manager_goroutine() {
 
 func Master_main() {
 
+	Status_ptr := &Status{0, 0}
+	Status_ptr = Status_ptr
+
 	rand.Seed(time.Now().UnixNano())
 
 	gob.Register([]interface{}(nil))
@@ -938,6 +991,10 @@ func Master_main() {
 	task_reducer_completed_channel = make(chan string, 1000)
 
 	probable_reducer_error_channel = make(chan *map_to_reduce_error, 1000)
+
+	Task_from_JRPC_channel = make(chan *[]interface{}, 1000)
+
+	Result_for_JRPC_channel = make(chan *[]interface{}, 1000)
 
 	go scheduler_reducer_goroutine()
 	go scheduler_mapper_goroutine()
