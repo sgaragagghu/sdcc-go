@@ -2,7 +2,7 @@ package rpc_master
 
 import (
 	. "../share"
-	json_parse "encoding/json"
+//	json_parse "encoding/json"
 	"net/http"
 	"errors"
 //	. "../rpc_mapper"
@@ -27,6 +27,10 @@ var (
 type Status struct {
 	Mapper_amount int `json:"mapper_amount"`
 	Reducer_amount int `json:"reducer_amount"`
+}
+
+type Results_type struct {
+	Results string `json:"results"`
 }
 /*
 type status_json struct {
@@ -55,7 +59,7 @@ func (h Master_handler) Job_reducer_completed(args *Job, reply *int) error {
 // create a type to get an interface for JSONRPC
 type JSONServer struct{}
 
-func (h JSONServer) Get_status(r *http.Request, args *struct{}, reply *Status) error {
+func (h JSONServer) Get_status(r *http.Request, _ *struct{}, reply *Status) error {
 	stat := *Status_ptr
 	reply = &stat
 	/*
@@ -69,7 +73,7 @@ func (h JSONServer) Get_status(r *http.Request, args *struct{}, reply *Status) e
 	return nil
 }
 
-func (h JSONServer) Send_task(r *http.Request, args *[]byte, reply bool) error {
+func (h JSONServer) Send_task(r *http.Request, args *[]byte, reply *bool) error {
 	slice := make([]interface{}, 2)
 	slice[0] = make(chan bool, 1)
 	slice[1] = args
@@ -89,8 +93,9 @@ func (h JSONServer) Send_task(r *http.Request, args *[]byte, reply bool) error {
 }
 
 
-func (h JSONServer) Get_results(r *http.Request, _ *int, reply *[]byte) error {
+func (h JSONServer) Get_results(r *http.Request, _ *struct{}, reply *Results_type) error {
 	results := ""
+
 
 	for loop := true; loop; {
 		select {
@@ -100,20 +105,13 @@ func (h JSONServer) Get_results(r *http.Request, _ *int, reply *[]byte) error {
 			loop = false
 		}
 	}
-	full_string, err := json_parse.Marshal(results)
-	reply = &full_string
-	if err != nil {
-		ErrorLoggerPtr.Println("Get_results failed",  err)
-	}
+//	full_string, err := json_parse.Marshal(results)
+	reply = &Results_type{results}
+
+//	if err != nil {
+//		ErrorLoggerPtr.Println("Get_results failed",  err)
+//	}
 
 	return nil
 }
 
-
-
-func (h JSONServer) Test(r *http.Request, args *int, reply *int) error {
-	n:= 3
-	reply = &n
-
-	return nil
-}
