@@ -7,6 +7,9 @@ import (
 	"errors"
 //	. "../rpc_mapper"
 //	"time"
+
+
+	"github.com/elliotchance/orderedmap"
 )
 
 const (
@@ -23,6 +26,31 @@ var (
 	Status_ptr *Status
 )
 
+type Task struct {
+	Id int32 `json:"id, omitempty"`
+	Origin_id int32 `json:"origin_id, omitempty"`
+	Send_time int64 `json:"send_time, omitempty"`
+	Resource_link string `json:"resource_link, omitempty"`
+	Mappers_amount int32 `json:"mappers_amount, omitempty"`
+	Margin int8 `json:"margin, omitempty"`
+	Separate_entries byte `json:"separate_entries, omitempty"`
+	Separate_properties byte `json:"separate_properties, omitempty"`
+	Properties_amount int8 `json:"properties_amount, omitempty"`
+	Initialization_algorithm string `json:"initialization_algorithm, omitempty"`
+	Map_algorithm string `json:"map_algorithm, omitempty"`
+	Map_algorithm_parameters interface{} `json:"map_algorithm_parameters, omitempty"`
+//	Shuffle_algorithm string
+//	Order_algorithm string
+	Reducers_amount int32 `json:"reducers_amount, omitempty"`
+	Reduce_algorithm string `json:"reduce_algorithm, omitempty"`
+	Reduce_algorithm_parameters interface{} `json:"reduce_algorithm_parameters, omitempty"`
+	Iteration_algorithm string `json:"iteration_algorithm, omitempty"`
+	Iteration_algorithm_parameters interface{} `json:"iteration_algorithm_parameters, omitempty"`
+	Keys_x_servers *orderedmap.OrderedMap `json:"keys_x_servers, omitempty"`
+	Keys_x_servers_version int8 `json:"keys_x_servers, omitempty"`
+	Jobs map[string]*Job `json:"jobs, omitempty"`
+	Jobs_done map[string]*Job `json:"mapper_amount, omitempty"`
+}
 
 type Status struct {
 	Mapper_amount int `json:"mapper_amount"`
@@ -73,19 +101,21 @@ func (h JSONServer) Get_status(r *http.Request, _ *struct{}, reply *Status) erro
 	return nil
 }
 
-func (h JSONServer) Send_task(r *http.Request, args *[]byte, reply *bool) error {
+func (h JSONServer) Send_task(r *http.Request, args *Task, reply *bool) error {
+	InfoLoggerPtr.Println("ciao")
 	slice := make([]interface{}, 2)
 	slice[0] = make(chan bool, 1)
 	slice[1] = args
+	reply_val := false
 
 	select {
 	case Task_from_JRPC_channel <- &slice:
 		select {
-		case reply = <-slice[0].(chan bool):
+		case reply_val = <-slice[0].(chan bool):
+			reply = &reply_val
 		}
 	default:
 		WarningLoggerPtr.Println("JRPC task channel is full")
-		reply = false
 		return errors.New("JRPC task channel is full")
 	}
 

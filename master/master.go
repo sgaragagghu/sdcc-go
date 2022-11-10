@@ -32,38 +32,12 @@ type map_to_reduce_error struct {
 	keys_x_servers *orderedmap.OrderedMap
 }
 
-type task struct {
-	id int32
-	origin_id int32
-	send_time int64
-	resource_link string
-	mappers_amount int32
-	margin int8
-	separate_entries byte
-	separate_properties byte
-	properties_amount int8
-	initialization_algorithm string
-	map_algorithm string
-	map_algorithm_parameters interface{}
-//	shuffle_algorithm string
-//	order_algorithm string
-	reducers_amount int32
-	reduce_algorithm string
-	reduce_algorithm_parameters interface{}
-	iteration_algorithm string
-	iteration_algorithm_parameters interface{}
-	keys_x_servers *orderedmap.OrderedMap
-	keys_x_servers_version int8
-	jobs map[string]*Job
-	jobs_done map[string]*Job
-}
-
 var (
 	// TODO both to be moved to the rpc file (if i'll make it)
 	New_task_mapper_event_channel chan struct{}
 	New_task_reducer_event_channel chan struct{}
-	Task_mapper_channel chan *task
-	Task_reducer_channel chan *task
+	Task_mapper_channel chan *Task
+	Task_reducer_channel chan *Task
 
 	add_mapper_channel chan *Server
 	rem_mapper_channel chan *Server
@@ -76,23 +50,23 @@ var (
 	stub_storage StubMapping
 )
 
-func initialization_algorithm_clustering(task_ptr *task) (ret bool) {
+func initialization_algorithm_clustering(task_ptr *Task) (ret bool) {
 	ret = false
-	resource_size := Get_file_size(task_ptr.resource_link)
-	offsets := make([][]float64, task_ptr.map_algorithm_parameters.([]interface{})[0].(int))
+	resource_size := Get_file_size(task_ptr.Resource_link)
+	offsets := make([][]float64, task_ptr.Map_algorithm_parameters.([]interface{})[0].(int))
 
 	for i, _ := range offsets {
 		offsets[i] = make ([]float64, 2)
-		download_size := int(math.Abs(((float64(resource_size) / float64(task_ptr.mappers_amount)) / 100) * float64(task_ptr.margin))) // TODO check overflow
+		download_size := int(math.Abs(((float64(resource_size) / float64(task_ptr.Mappers_amount)) / 100) * float64(task_ptr.Margin))) // TODO check overflow
 		// TODO check possible overflow
 		offset := rand.Intn(int(resource_size) - download_size) // TODO check seed
 
-		load_ptr := Http_download(task_ptr.resource_link, int64(offset), int64(offset + download_size))
+		load_ptr := Http_download(task_ptr.Resource_link, int64(offset), int64(offset + download_size))
 
-		actual_begin, err := Get_actual_begin(load_ptr, task_ptr.separate_entries)
+		actual_begin, err := Get_actual_begin(load_ptr, task_ptr.Separate_entries)
 		if err != nil { ErrorLoggerPtr.Fatal("get_actual_begin error:", err) }
 
-		actual_end, err := Get_actual_end(load_ptr, task_ptr.separate_entries, actual_begin + 1)
+		actual_end, err := Get_actual_end(load_ptr, task_ptr.Separate_entries, actual_begin + 1)
 		if err != nil { ErrorLoggerPtr.Fatal("get_actual_end error:", err) }
 
 		//InfoLoggerPtr.Println("Actual begin:", actual_begin, "actual end:", actual_end)
@@ -102,12 +76,12 @@ func initialization_algorithm_clustering(task_ptr *task) (ret bool) {
 
 		reader := bytes.NewReader((*load_ptr)[actual_begin:actual_end + 1])
 		buffered_read := bufio.NewReader(reader)
-		Parser_simple(&(offsets[i]), buffered_read, task_ptr.separate_properties, task_ptr.separate_entries)
+		Parser_simple(&(offsets[i]), buffered_read, task_ptr.Separate_properties, task_ptr.Separate_entries)
 	}
 
 	InfoLoggerPtr.Println("Seed:")
 	for i, v := range offsets {
-		task_ptr.map_algorithm_parameters.([]interface{})[i + 1] = v
+		task_ptr.Map_algorithm_parameters.([]interface{})[i + 1] = v
 		InfoLoggerPtr.Println(v)
 	}
 
@@ -132,12 +106,12 @@ func task_injector_goroutine() { // TODO make a jsonrpc interface to send tasks 
 	iteration_parameters := make([]interface{}, 1)
 	iteration_parameters[0] =  2 // max_diff (percentage)
 
-	task_ptr := &task{-1, -1, 0, "https://raw.githubusercontent.com/sgaragagghu/sdcc-clustering-datasets/master/sdcc/2d-4c.csv", 2, 10,
+	task_ptr := &Task{-1, -1, 0, "https://raw.githubusercontent.com/sgaragagghu/sdcc-clustering-datasets/master/sdcc/2d-4c.csv", 2, 10,
 		'\n', ',', 2, "clustering", "clustering", parameters, 2, "clustering", nil, "clustering", iteration_parameters, orderedmap.NewOrderedMap(), 0,
 		make(map[string]*Job), make(map[string]*Job)}
 
 	// TODO check error and return...
-	/*_, _ := */Call("initialization_algorithm_" + task_ptr.initialization_algorithm, stub_storage, task_ptr)
+	/*_, _ := */Call("initialization_algorithm_" + task_ptr.Initialization_algorithm, stub_storage, task_ptr)
 
 	select {
 	case Task_mapper_channel <- task_ptr:
@@ -288,25 +262,25 @@ func scheduler_mapper_goroutine() {
 			} else if _, ok := working_mapper_hashmap[rem_mapper_ptr.Id]; ok {*/
 			probable_reducer_task_error := make(map[string]struct{})
 			for el := task_hashmap.Back(); el != nil; el = el.Prev() {
-				current_task_ptr := strconv.FormatInt(int64(el.Value.(*task).id), 10)
+				current_task_ptr := strconv.FormatInt(int64(el.Value.(*Task).Id), 10)
 				task_ptr_o, task_present := task_hashmap.Get(current_task_ptr)
 				if !task_present { break }
-				task_ptr := task_ptr_o.(*task)
+				task_ptr := task_ptr_o.(*Task)
 				jobs := servers_x_tasks_x_jobs[rem_mapper_ptr.Id][current_task_ptr]
 				for i := 0; i < 2; i += 1 {
 					for _, job_ptr := range jobs {
 						if i > 0 { // this is the iteration with the already done jobs
 							probable_reducer_task_error[job_ptr.Task_id] = struct{}{}
-							delete(task_ptr.jobs_done, job_ptr.Id)
-							task_ptr.jobs[job_ptr.Id] = job_ptr
+							delete(task_ptr.Jobs_done, job_ptr.Id)
+							task_ptr.Jobs[job_ptr.Id] = job_ptr
 							for _, v := range job_ptr.Keys {
-								servers, _ := task_ptr.keys_x_servers.Get(v) // TODO check errors
+								servers, _ := task_ptr.Keys_x_servers.Get(v) // TODO check errors
 								delete(servers.(map[string]*Server), rem_mapper_ptr.Id)
 							}
-							WarningLoggerPtr.Println("Mapper", rem_mapper_ptr.Id, "disconnected, previously done job", job_ptr.Id, "task", task_ptr.id,
+							WarningLoggerPtr.Println("Mapper", rem_mapper_ptr.Id, "disconnected, previously done job", job_ptr.Id, "task", task_ptr.Id,
 									"is being rescheduled.")
 						} else {
-							WarningLoggerPtr.Println("Mapper", rem_mapper_ptr.Id, "disconnected, job", job_ptr.Id, "task", task_ptr.id,
+							WarningLoggerPtr.Println("Mapper", rem_mapper_ptr.Id, "disconnected, job", job_ptr.Id, "task", task_ptr.Id,
 									"is being rescheduled.")
 						}
 						if len(idle_mapper_hashmap) > 0 {
@@ -354,7 +328,7 @@ func scheduler_mapper_goroutine() {
 		case job_completed_ptr := <-Job_mapper_completed_channel:
 			task_ptr_o, present := task_hashmap.Get(job_completed_ptr.Task_id)
 			if !present { break }
-			task_ptr := task_ptr_o.(*task)
+			task_ptr := task_ptr_o.(*Task)
 			{
 				job_map, ok := servers_x_tasks_x_jobs_done[job_completed_ptr.Server_id][job_completed_ptr.Task_id]
 				if !ok {
@@ -364,15 +338,15 @@ func scheduler_mapper_goroutine() {
 				job_map[job_completed_ptr.Id] = job_completed_ptr
 			}
 
-			delete(task_ptr.jobs, job_completed_ptr.Id)
-			task_ptr.jobs_done[job_completed_ptr.Id] = job_completed_ptr
+			delete(task_ptr.Jobs, job_completed_ptr.Id)
+			task_ptr.Jobs_done[job_completed_ptr.Id] = job_completed_ptr
 			delete(servers_x_tasks_x_jobs[job_completed_ptr.Server_id][job_completed_ptr.Task_id], job_completed_ptr.Id)
 			if len(servers_x_tasks_x_jobs[job_completed_ptr.Server_id][job_completed_ptr.Task_id]) == 0 {
 				delete(servers_x_tasks_x_jobs[job_completed_ptr.Server_id], job_completed_ptr.Task_id)
 			}
 
 			for _, v := range job_completed_ptr.Keys {
-				keys_x_servers := task_ptr.keys_x_servers
+				keys_x_servers := task_ptr.Keys_x_servers
 				value, ok := keys_x_servers.Get(v)
 				if !ok {
 					value = make(map[string]*Server)
@@ -396,10 +370,10 @@ func scheduler_mapper_goroutine() {
 					loop = false
 				}
 
-				if len(task_ptr.jobs) == 0 {
-					if task_ptr.send_time == 0 {
+				if len(task_ptr.Jobs) == 0 {
+					if task_ptr.Send_time == 0 {
 						InfoLoggerPtr.Println("Task mapper completed, job", job_completed_ptr.Id, "task", job_completed_ptr.Task_id, ".")
-						task_ptr.send_time = time.Now().Unix()
+						task_ptr.Send_time = time.Now().Unix()
 						select {
 						case Task_reducer_channel <- task_ptr:
 							select {
@@ -414,7 +388,7 @@ func scheduler_mapper_goroutine() {
 						InfoLoggerPtr.Println("Task mapper re - completed, job", job_completed_ptr.Id, "task", job_completed_ptr.Task_id, ".")
 
 						select {
-						case probable_reducer_error_channel <- &map_to_reduce_error{strconv.FormatInt(int64(task_ptr.id), 10), task_ptr.keys_x_servers}:
+						case probable_reducer_error_channel <- &map_to_reduce_error{strconv.FormatInt(int64(task_ptr.Id), 10), task_ptr.Keys_x_servers}:
 						default:
 							ErrorLoggerPtr.Fatal("Probable_reducer_error_channel is full.")
 						}
@@ -443,10 +417,10 @@ func scheduler_mapper_goroutine() {
 		case <-New_task_mapper_event_channel:
 			process_new_task := false
 			latest_task_map_el := task_hashmap.Front() // TODO check error
-			var latest_task_ptr *task
+			var latest_task_ptr *Task
 			if latest_task_map_el != nil {
-				latest_task_ptr = latest_task_map_el.Value.(*task)
-				if len(latest_task_ptr.jobs) == 0 { // current job finished
+				latest_task_ptr = latest_task_map_el.Value.(*Task)
+				if len(latest_task_ptr.Jobs) == 0 { // current job finished
 					if task_hashmap.Len() < MAX_MAP_TASKS {
 						process_new_task = true
 					} else {
@@ -457,12 +431,12 @@ func scheduler_mapper_goroutine() {
 			if process_new_task {
 				select {
 				case task_ptr := <-Task_mapper_channel:
-					task_ptr.id = task_counter
+					task_ptr.Id = task_counter
 					task_counter += 1
-					task_hashmap.Set(strconv.Itoa(int(task_ptr.id)), task_ptr) // TODO check overflow
-					InfoLoggerPtr.Println("Scheduling mapper task:", task_ptr.id)
-					resource_size := Get_file_size(task_ptr.resource_link)
-					mappers_amount := MinOf_int32(task_ptr.mappers_amount, int32(len(idle_mapper_hashmap))) // TODO check overflow
+					task_hashmap.Set(strconv.Itoa(int(task_ptr.Id)), task_ptr) // TODO check overflow
+					InfoLoggerPtr.Println("Scheduling mapper task:", task_ptr.Id)
+					resource_size := Get_file_size(task_ptr.Resource_link)
+					mappers_amount := MinOf_int32(task_ptr.Mappers_amount, int32(len(idle_mapper_hashmap))) // TODO check overflow
 					if mappers_amount == 0 { mappers_amount = 1 }
 					slice_size := int64(math.Abs(float64(resource_size) / float64(mappers_amount))) // TODO math.Abs, does it make sense here ?
 					jobs := make([]*Job, mappers_amount)
@@ -473,11 +447,11 @@ func scheduler_mapper_goroutine() {
 							end := (int64(i) + 1) * slice_size
 							if i == 0 { begin = 0 }
 							if i == mappers_amount { end = resource_size }
-							jobs[i] = &Job{strconv.FormatInt(int64(i), 10), strconv.FormatInt(int64(task_ptr.id), 10),
-								strconv.FormatInt(int64(task_ptr.origin_id), 10), "", task_ptr.resource_link, begin, end, task_ptr.margin,
-								task_ptr.separate_entries, task_ptr.separate_properties, task_ptr.properties_amount,
-								task_ptr.map_algorithm, task_ptr.map_algorithm_parameters, nil, nil,  nil, 0, false}
-							task_ptr.jobs[strconv.FormatInt(int64(i), 10)] = jobs[i]
+							jobs[i] = &Job{strconv.FormatInt(int64(i), 10), strconv.FormatInt(int64(task_ptr.Id), 10),
+								strconv.FormatInt(int64(task_ptr.Origin_id), 10), "", task_ptr.Resource_link, begin, end, task_ptr.Margin,
+								task_ptr.Separate_entries, task_ptr.Separate_properties, task_ptr.Properties_amount,
+								task_ptr.Map_algorithm, task_ptr.Map_algorithm_parameters, nil, nil,  nil, 0, false}
+							task_ptr.Jobs[strconv.FormatInt(int64(i), 10)] = jobs[i]
 						}
 					}
 					if len(idle_mapper_hashmap) > 0 {
@@ -547,20 +521,20 @@ func iteration_algorithm_clustering_deep_equal(a map[string]interface{}, b map[s
 	return true
 }
 
-func iteration_algorithm_clustering(task_ptr *task, new_task_ptr_ptr **task, keys_x_values map[string]interface{}, result_channel chan *string) (bool) {
+func iteration_algorithm_clustering(task_ptr *Task, new_task_ptr_ptr **Task, keys_x_values map[string]interface{}, result_channel chan *string) (bool) {
 /*
 	if task_ptr.iteration_algorithm_parameters == nil {
 		task_ptr.iteration_algorithm_parameters = make([]interface{}, 0)
 	}
 */
-	if len(task_ptr.iteration_algorithm_parameters.([]interface{})) == 1 {
-		task_ptr.iteration_algorithm_parameters = append(task_ptr.iteration_algorithm_parameters.([]interface{}), keys_x_values)
+	if len(task_ptr.Iteration_algorithm_parameters.([]interface{})) == 1 {
+		task_ptr.Iteration_algorithm_parameters = append(task_ptr.Iteration_algorithm_parameters.([]interface{}), keys_x_values)
 	} else {
-		old_keys_x_values := task_ptr.iteration_algorithm_parameters.([]interface{})[1].(map[string]interface{})
+		old_keys_x_values := task_ptr.Iteration_algorithm_parameters.([]interface{})[1].(map[string]interface{})
 
-		if iteration_algorithm_clustering_deep_equal(old_keys_x_values, keys_x_values, task_ptr.iteration_algorithm_parameters.([]interface{})[0].(int)) {
+		if iteration_algorithm_clustering_deep_equal(old_keys_x_values, keys_x_values, task_ptr.Iteration_algorithm_parameters.([]interface{})[0].(int)) {
 			InfoLoggerPtr.Println("Fixpoint found, iteration concluded")
-			result_string := fmt.Sprintln("Task", task_ptr.id, "origin task", task_ptr.origin_id, "result:")
+			result_string := fmt.Sprintln("Task", task_ptr.Id, "origin task", task_ptr.Origin_id, "result:")
 			for key, key_value_o := range keys_x_values {
 				key_value := key_value_o.([]float64)
 				result_string += fmt.Sprintln("key", key, "value", key_value)
@@ -583,14 +557,14 @@ func iteration_algorithm_clustering(task_ptr *task, new_task_ptr_ptr **task, key
 			return true
 		}
 
-		task_ptr.iteration_algorithm_parameters.([]interface{})[1] = keys_x_values
+		task_ptr.Iteration_algorithm_parameters.([]interface{})[1] = keys_x_values
 	}
 
 	for index_string, value := range keys_x_values {
 		// i := 1
 		// value := value_o.(map[string]struct{})
 		index, _ := strconv.Atoi(index_string) // TODO check error
-		task_ptr.map_algorithm_parameters.([]interface{})[index + 1] = value.([]float64)
+		task_ptr.Map_algorithm_parameters.([]interface{})[index + 1] = value.([]float64)
 		/*
 		for string_point, _ := range value {
 				reader := bytes.NewReader([]byte(string_point))
@@ -616,14 +590,14 @@ func iteration_algorithm_clustering(task_ptr *task, new_task_ptr_ptr **task, key
 		*/
 	}
 
-	*new_task_ptr_ptr = &task{-1, task_ptr.origin_id, 0, task_ptr.resource_link, task_ptr.mappers_amount, task_ptr.margin,
-		task_ptr.separate_entries, task_ptr.separate_properties, task_ptr.properties_amount, task_ptr.initialization_algorithm,
-		task_ptr.map_algorithm, task_ptr.map_algorithm_parameters, task_ptr.reducers_amount, task_ptr.reduce_algorithm,
-		task_ptr.reduce_algorithm_parameters, task_ptr.iteration_algorithm, task_ptr.iteration_algorithm_parameters, orderedmap.NewOrderedMap(), 0,
+	*new_task_ptr_ptr = &Task{-1, task_ptr.Origin_id, 0, task_ptr.Resource_link, task_ptr.Mappers_amount, task_ptr.Margin,
+		task_ptr.Separate_entries, task_ptr.Separate_properties, task_ptr.Properties_amount, task_ptr.Initialization_algorithm,
+		task_ptr.Map_algorithm, task_ptr.Map_algorithm_parameters, task_ptr.Reducers_amount, task_ptr.Reduce_algorithm,
+		task_ptr.Reduce_algorithm_parameters, task_ptr.Iteration_algorithm, task_ptr.Iteration_algorithm_parameters, orderedmap.NewOrderedMap(), 0,
 		make(map[string]*Job), make(map[string]*Job)}
 	InfoLoggerPtr.Println("Fixpoint not found yet, new_task created")
 
-	for index, index_value_o := range task_ptr.map_algorithm_parameters.([]interface{})[1:] {
+	for index, index_value_o := range task_ptr.Map_algorithm_parameters.([]interface{})[1:] {
 		index_value := index_value_o.([]float64)
 		InfoLoggerPtr.Println("key", index, "value", index_value)
 	}
@@ -637,9 +611,9 @@ func iteration_algorithm_clustering(task_ptr *task, new_task_ptr_ptr **task, key
 	return false
 }
 
-func iteration_manager(task_ptr *task, keys_x_values map[string]interface{}) {
-	var new_task_ptr *task
-	res, err := Call("iteration_algorithm_" + task_ptr.iteration_algorithm, stub_storage, task_ptr, &new_task_ptr, keys_x_values)
+func iteration_manager(task_ptr *Task, keys_x_values map[string]interface{}) {
+	var new_task_ptr *Task
+	res, err := Call("iteration_algorithm_" + task_ptr.Iteration_algorithm, stub_storage, task_ptr, &new_task_ptr, keys_x_values)
 	if err != nil { ErrorLoggerPtr.Fatal("Error calling iteration_algorithm:", err) }
 
 	if !res.(bool) {
@@ -705,16 +679,16 @@ func scheduler_reducer_goroutine() {
 				if state == WAIT { state = BUSY }
 				task_ptr_o, ok := task_hashmap.Get(error_ptr.task_id)
 				if ok {
-					task_ptr := task_ptr_o.(*task)
-					task_ptr.keys_x_servers = error_ptr.keys_x_servers
-					task_ptr.keys_x_servers_version += 1
+					task_ptr := task_ptr_o.(*Task)
+					task_ptr.Keys_x_servers = error_ptr.keys_x_servers
+					task_ptr.Keys_x_servers_version += 1
 					for _, server_ptr := range idle_reducer_hashmap {
 						loop_break := false
 						select {
 						case job_ptr := <-job_channel:
-							if job_ptr.Keys_x_servers_version != task_ptr.keys_x_servers_version {
+							if job_ptr.Keys_x_servers_version != task_ptr.Keys_x_servers_version {
 								for key, key_content := range job_ptr.Keys_x_servers {
-									servers_map, present := task_ptr.keys_x_servers.Get(key)
+									servers_map, present := task_ptr.Keys_x_servers.Get(key)
 									if !present { ErrorLoggerPtr.Fatal("Key not found.") }
 									key_content = servers_map.(map[string]*Server)
 
@@ -743,7 +717,7 @@ func scheduler_reducer_goroutine() {
 				delete(idle_reducer_hashmap, rem_reducer_ptr.Id)
 			} else if server, ok := working_reducer_hashmap[rem_reducer_ptr.Id]; ok {*/
 			for el := task_hashmap.Back(); el != nil; el = el.Prev() {
-				current_task_ptr := strconv.FormatInt(int64(el.Value.(*task).id), 10)
+				current_task_ptr := strconv.FormatInt(int64(el.Value.(*Task).Id), 10)
 				jobs := servers_x_tasks_x_jobs[rem_reducer_ptr.Id][current_task_ptr]
 				for _, job_ptr := range jobs {
 					if state != WAIT && len(idle_reducer_hashmap) > 0 {
@@ -785,7 +759,7 @@ func scheduler_reducer_goroutine() {
 
 			task_ptr_o, present := task_hashmap.Get(job_completed_ptr.Task_id)
 			if !present { break }
-			task_ptr := task_ptr_o.(*task)
+			task_ptr := task_ptr_o.(*Task)
 			{
 				job_map, ok := servers_x_tasks_x_jobs_done[job_completed_ptr.Server_id][job_completed_ptr.Task_id]
 				if !ok {
@@ -806,8 +780,8 @@ func scheduler_reducer_goroutine() {
 				}
 			}
 
-			delete(task_ptr.jobs, job_completed_ptr.Id)
-			task_ptr.jobs_done[job_completed_ptr.Id] = job_completed_ptr
+			delete(task_ptr.Jobs, job_completed_ptr.Id)
+			task_ptr.Jobs_done[job_completed_ptr.Id] = job_completed_ptr
 			delete(servers_x_tasks_x_jobs[job_completed_ptr.Server_id][job_completed_ptr.Task_id], job_completed_ptr.Id)
 			if len(servers_x_tasks_x_jobs[job_completed_ptr.Server_id][job_completed_ptr.Task_id]) == 0 {
 				delete(servers_x_tasks_x_jobs[job_completed_ptr.Server_id], job_completed_ptr.Task_id)
@@ -835,7 +809,7 @@ func scheduler_reducer_goroutine() {
 						ErrorLoggerPtr.Fatal("Task_reducer_completed full.")
 					}
 					task_ptr, _ := task_hashmap.Get(job_completed_ptr.Task_id) // TODO check error
-					go iteration_manager(task_ptr.(*task), keys_x_values)
+					go iteration_manager(task_ptr.(*Task), keys_x_values)
 					keys_x_values = make(map[string]interface{})
 				}
 				if state == IDLE && len(Task_reducer_channel) > 0 { // if the curent task finished and theres a task
@@ -853,19 +827,19 @@ func scheduler_reducer_goroutine() {
 					for loop := true; loop; {
 						select {
 						case error_ptr := <-keys_x_servers_update_channel:
-							if strconv.FormatInt(int64(task_ptr.id), 10) == error_ptr.task_id {
-								task_ptr.keys_x_servers = error_ptr.keys_x_servers
-								task_ptr.keys_x_servers_version += 1
+							if strconv.FormatInt(int64(task_ptr.Id), 10) == error_ptr.task_id {
+								task_ptr.Keys_x_servers = error_ptr.keys_x_servers
+								task_ptr.Keys_x_servers_version += 1
 							}
 						default:
 							loop = false
 						}
 					}
-					task_hashmap.Set(strconv.Itoa(int(task_ptr.id)), task_ptr) // TODO check overflow
+					task_hashmap.Set(strconv.Itoa(int(task_ptr.Id)), task_ptr) // TODO check overflow
 					state = BUSY
-					InfoLoggerPtr.Println("Scheduling reducer task:", task_ptr.id)
-					keys_amount := int32(task_ptr.keys_x_servers.Len()) // TODO check overflow
-					reducers_amount := MinOf_int32(task_ptr.reducers_amount, int32(len(idle_reducer_hashmap))) // TODO check overflow
+					InfoLoggerPtr.Println("Scheduling reducer task:", task_ptr.Id)
+					keys_amount := int32(task_ptr.Keys_x_servers.Len()) // TODO check overflow
+					reducers_amount := MinOf_int32(task_ptr.Reducers_amount, int32(len(idle_reducer_hashmap))) // TODO check overflow
 					slice_size := 1
 					if reducers_amount == 0 { reducers_amount = 1 }
 					var slice_rest int32 = 0
@@ -889,7 +863,7 @@ func scheduler_reducer_goroutine() {
 							keys := make(map[string]map[string]*Server)
 							{
 								j := 0
-								el := task_ptr.keys_x_servers.Front()
+								el := task_ptr.Keys_x_servers.Front()
 								//InfoLoggerPtr.Println("size", current_slice_size)
 								for ; j < current_slice_size || el != nil; j += 1 {
 									value := el.Value.(map[string]*Server)
@@ -901,11 +875,11 @@ func scheduler_reducer_goroutine() {
 								}
 							}
 
-							jobs[i] = &Job{strconv.FormatInt(int64(i), 10), strconv.FormatInt(int64(task_ptr.id), 10),
-								strconv.FormatInt(int64(task_ptr.id), 10), "", "", 0, 0, 0, task_ptr.separate_entries,
-								task_ptr.separate_properties, task_ptr.properties_amount, task_ptr.reduce_algorithm,
-								task_ptr.reduce_algorithm_parameters, nil, nil, keys, 0, false}
-							task_ptr.jobs[strconv.FormatInt(int64(i), 10)] = jobs[i]
+							jobs[i] = &Job{strconv.FormatInt(int64(i), 10), strconv.FormatInt(int64(task_ptr.Id), 10),
+								strconv.FormatInt(int64(task_ptr.Id), 10), "", "", 0, 0, 0, task_ptr.Separate_entries,
+								task_ptr.Separate_properties, task_ptr.Properties_amount, task_ptr.Reduce_algorithm,
+								task_ptr.Reduce_algorithm_parameters, nil, nil, keys, 0, false}
+							task_ptr.Jobs[strconv.FormatInt(int64(i), 10)] = jobs[i]
 						}
 					}
 					if len(idle_reducer_hashmap) > 0 {
@@ -981,10 +955,10 @@ func Master_main() {
 	New_task_reducer_event_channel = make(chan struct{}, 1000)
 
 	//creating channel for communicating new task
-	Task_mapper_channel = make(chan *task, 1000)
+	Task_mapper_channel = make(chan *Task, 1000)
 
 	//creating channel for communicating new task
-	Task_reducer_channel = make(chan *task, 1000)
+	Task_reducer_channel = make(chan *Task, 1000)
 
 	Job_reducer_completed_channel = make(chan *Job, 1000)
 
