@@ -52,6 +52,23 @@ type Task struct {
 	Jobs_done map[string]*Job `json:"mapper_amount, omitempty"`
 }
 
+type Task_json struct {
+	Resource_link string `json:"resource_link"`
+	Mappers_amount int32 `json:"mappers_amount"`
+	Margin int8 `json:"margin"`
+	Separate_entries string `json:"separate_entries"`
+	Separate_properties string `json:"separate_properties"`
+	Properties_amount int8 `json:"properties_amount"`
+	Initialization_algorithm string `json:"initialization_algorithm"`
+	Map_algorithm string `json:"map_algorithm"`
+	Map_algorithm_parameters interface{} `json:"map_algorithm_parameters"`
+	Reducers_amount int32 `json:"reducers_amount"`
+	Reduce_algorithm string `json:"reduce_algorithm"`
+	Reduce_algorithm_parameters interface{} `json:"reduce_algorithm_parameters"`
+	Iteration_algorithm string `json:"iteration_algorithm"`
+	Iteration_algorithm_parameters interface{} `json:"iteration_algorithm_parameters"`
+}
+
 type Status struct {
 	Mapper_amount int `json:"mapper_amount"`
 	Reducer_amount int `json:"reducer_amount"`
@@ -101,11 +118,37 @@ func (h JSONServer) Get_status(r *http.Request, _ *struct{}, reply *Status) erro
 	return nil
 }
 
-func (h JSONServer) Send_task(r *http.Request, args *Task, reply *bool) error {
-	InfoLoggerPtr.Println("ciao")
+func (h JSONServer) Send_task(r *http.Request, args *Task_json, reply *bool) error {
+	InfoLoggerPtr.Println("ciao", *args)
+
+
+	task_ptr := &Task{
+		Id:-1,
+		Origin_id:-1,
+		Send_time:0,
+		Resource_link:args.Resource_link,
+		Mappers_amount:args.Mappers_amount,
+		Margin:args.Margin,
+		Separate_entries:([]byte(args.Separate_entries))[0],
+		Separate_properties:([]byte(args.Separate_properties))[0],
+		Properties_amount:args.Properties_amount,
+		Initialization_algorithm:args.Initialization_algorithm,
+		Map_algorithm:args.Map_algorithm,
+		Map_algorithm_parameters:args.Map_algorithm_parameters,
+		Reducers_amount:args.Reducers_amount,
+		Reduce_algorithm:args.Reduce_algorithm,
+		Reduce_algorithm_parameters:args.Reduce_algorithm_parameters,
+		Iteration_algorithm:args.Iteration_algorithm,
+		Iteration_algorithm_parameters:args.Iteration_algorithm_parameters,
+		Keys_x_servers:nil,
+		Keys_x_servers_version:0,
+		Jobs:make(map[string]*Job),
+		Jobs_done:make(map[string]*Job),
+	}
+
 	slice := make([]interface{}, 2)
 	slice[0] = make(chan bool, 1)
-	slice[1] = args
+	slice[1] = task_ptr
 	reply_val := false
 
 	select {
