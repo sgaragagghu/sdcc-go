@@ -77,6 +77,10 @@ type Status struct {
 type Results_type struct {
 	Results string `json:"results"`
 }
+
+type Send_task_reply_type struct {
+	Reply string `json:"reply"`
+}
 /*
 type status_json struct {
 	Mapper_amount int `json:"mapper_amount"`
@@ -119,8 +123,6 @@ func (h JSONServer) Get_status(r *http.Request, _ *struct{}, reply *Status) erro
 }
 
 func (h JSONServer) Send_task(r *http.Request, args *Task_json, reply *bool) error {
-	InfoLoggerPtr.Println("ciao", *args)
-
 
 	task_ptr := &Task{
 		Id:-1,
@@ -140,7 +142,7 @@ func (h JSONServer) Send_task(r *http.Request, args *Task_json, reply *bool) err
 		Reduce_algorithm_parameters:args.Reduce_algorithm_parameters,
 		Iteration_algorithm:args.Iteration_algorithm,
 		Iteration_algorithm_parameters:args.Iteration_algorithm_parameters,
-		Keys_x_servers:nil,
+		Keys_x_servers:orderedmap.NewOrderedMap(),
 		Keys_x_servers_version:0,
 		Jobs:make(map[string]*Job),
 		Jobs_done:make(map[string]*Job),
@@ -149,24 +151,24 @@ func (h JSONServer) Send_task(r *http.Request, args *Task_json, reply *bool) err
 	slice := make([]interface{}, 2)
 	slice[0] = make(chan bool, 1)
 	slice[1] = task_ptr
-	reply_val := false
+	reply_value := false
+	var err error = nil
 
 	select {
 	case Task_from_JRPC_channel <- &slice:
 		select {
-		case reply_val = <-slice[0].(chan bool):
-			reply = &reply_val
+		case reply_value = <-slice[0].(chan bool):
 		}
 	default:
 		WarningLoggerPtr.Println("JRPC task channel is full")
-		return errors.New("JRPC task channel is full")
+		err = errors.New("JRPC task channel is full")
 	}
-
-	return nil
+	*reply = reply_value
+	return err
 }
 
 
-func (h JSONServer) Get_results(r *http.Request, _ *struct{}, reply *Results_type) error {
+func (h JSONServer) Get_results(r *http.Request, _ *struct{}, reply *string) error {
 	results := ""
 
 
@@ -179,7 +181,7 @@ func (h JSONServer) Get_results(r *http.Request, _ *struct{}, reply *Results_typ
 		}
 	}
 //	full_string, err := json_parse.Marshal(results)
-	reply = &Results_type{results}
+	*reply = results
 
 //	if err != nil {
 //		ErrorLoggerPtr.Println("Get_results failed",  err)
