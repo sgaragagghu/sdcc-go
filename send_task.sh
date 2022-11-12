@@ -15,6 +15,7 @@ curl -X POST					\
 			"map_algorithm": "clustering",
 			"map_algorithm_parameters": [4],
 			"reducers_amount": 2,
+			"reduce_algorithm": "clustering",
 			"iteration_algorithm": "clustering",
 			"iteration_algorithm_parameters": [2]
 		}],
