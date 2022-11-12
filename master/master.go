@@ -53,6 +53,8 @@ var (
 func initialization_algorithm_clustering(task_ptr *Task) (ret bool) {
 	ret = false
 	resource_size := Get_file_size(task_ptr.Resource_link)
+	task_ptr.Iteration_algorithm_parameters.([]interface{})[0] = int(task_ptr.Iteration_algorithm_parameters.([]interface{})[0].(float64)) // check overflow
+	task_ptr.Map_algorithm_parameters.([]interface{})[0] = int((task_ptr.Map_algorithm_parameters.([]interface{})[0]).(float64)) // check overflow
 	offsets := make([][]float64, task_ptr.Map_algorithm_parameters.([]interface{})[0].(int))
 
 	for i, _ := range offsets {
@@ -81,7 +83,12 @@ func initialization_algorithm_clustering(task_ptr *Task) (ret bool) {
 
 	InfoLoggerPtr.Println("Seed:")
 	for i, v := range offsets {
-		task_ptr.Map_algorithm_parameters.([]interface{})[i + 1] = v
+		if i < len(task_ptr.Map_algorithm_parameters.([]interface{})) {
+			task_ptr.Map_algorithm_parameters = append(task_ptr.Map_algorithm_parameters.([]interface{}), v)
+		} else {
+			task_ptr.Map_algorithm_parameters.([]interface{})[i + 1] = v
+		}
+
 		InfoLoggerPtr.Println(v)
 	}
 
@@ -96,7 +103,7 @@ func task_injector_goroutine() { // TODO make a jsonrpc interface to send tasks 
 	time.Sleep(60 * SECOND)
 
 	parameters := make([]interface{}, 5)
-	parameters[0] = 4 // k
+	parameters[0] = float64(4) // k
 	parameters[1] = []float64{0, 0} // u_0
 	parameters[2] = []float64{1, 1} // u_1
 	parameters[3] = []float64{2, 2} // u_2
@@ -104,7 +111,7 @@ func task_injector_goroutine() { // TODO make a jsonrpc interface to send tasks 
 
 
 	iteration_parameters := make([]interface{}, 1)
-	iteration_parameters[0] =  2 // max_diff (percentage)
+	iteration_parameters[0] =  float64(2) // max_diff (percentage)
 
 	task_ptr := &Task{-1, -1, 0, "https://raw.githubusercontent.com/sgaragagghu/sdcc-clustering-datasets/master/sdcc/2d-4c.csv", 2, 10,
 		'\n', ',', 2, "clustering", "clustering", parameters, 2, "clustering", nil, "clustering", iteration_parameters, orderedmap.NewOrderedMap(), 0,
@@ -131,14 +138,15 @@ func task_injector_goroutine() { // TODO make a jsonrpc interface to send tasks 
 		select {
 		case slice := <-Task_from_JRPC_channel:
 			reply := false
-			task_bytes := (*slice)[1]
-			task_bytes = task_bytes // TODO remove
-		// TODO: preparation algorithm
+			task_ptr := ((*slice)[1]).(*Task)
 
+			Call("initialization_algorithm_" + task_ptr.Initialization_algorithm, stub_storage, task_ptr)
+		// TODO: preparation algorithm
 			select {
 			case Task_mapper_channel <- task_ptr:
 				select {
 				case New_task_mapper_event_channel <- struct{}{}:
+					InfoLoggerPtr.Println("Task correctly injected")
 					reply = true
 				default:
 					WarningLoggerPtr.Fatal("Task channel is full")
@@ -146,7 +154,6 @@ func task_injector_goroutine() { // TODO make a jsonrpc interface to send tasks 
 			default:
 				WarningLoggerPtr.Fatal("Task channel is full")
 			}
-
 			select {
 			case (*slice)[0].(chan bool)<-reply:
 			default:
@@ -521,7 +528,7 @@ func iteration_algorithm_clustering_deep_equal(a map[string]interface{}, b map[s
 	return true
 }
 
-func iteration_algorithm_clustering(task_ptr *Task, new_task_ptr_ptr **Task, keys_x_values map[string]interface{}, result_channel chan *string) (bool) {
+func iteration_algorithm_clustering(task_ptr *Task, new_task_ptr_ptr **Task, keys_x_values map[string]interface{}) (bool) {
 /*
 	if task_ptr.iteration_algorithm_parameters == nil {
 		task_ptr.iteration_algorithm_parameters = make([]interface{}, 0)
@@ -538,7 +545,7 @@ func iteration_algorithm_clustering(task_ptr *Task, new_task_ptr_ptr **Task, key
 			for key, key_value_o := range keys_x_values {
 				key_value := key_value_o.([]float64)
 				result_string += fmt.Sprintln("key", key, "value", key_value)
-				InfoLoggerPtr.Printf(result_string)
+				//InfoLoggerPtr.Printf(result_string)
 
 				for loop := true; loop ; {
 					select {
@@ -589,6 +596,8 @@ func iteration_algorithm_clustering(task_ptr *Task, new_task_ptr_ptr **Task, key
 		}
 		*/
 	}
+
+	if task_ptr.Origin_id == -1 { task_ptr.Origin_id = task_ptr.Id }
 
 	*new_task_ptr_ptr = &Task{-1, task_ptr.Origin_id, 0, task_ptr.Resource_link, task_ptr.Mappers_amount, task_ptr.Margin,
 		task_ptr.Separate_entries, task_ptr.Separate_properties, task_ptr.Properties_amount, task_ptr.Initialization_algorithm,

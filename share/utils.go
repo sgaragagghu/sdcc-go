@@ -138,7 +138,7 @@ func Call(funcName string, stub_storage StubMapping, params ... interface{}) (re
 	f := reflect.ValueOf(stub_storage[funcName])
 	funcType := reflect.TypeOf(stub_storage[funcName])
 	if len(params) != f.Type().NumIn() {
-		err = errors.New("The number of params is out of index.")
+		err = fmt.Errorf("The number of params is out of index, params: %v, needed: %v.",  len(params), f.Type().NumIn())
 		return
 	}
 	in := make([]reflect.Value, len(params))
