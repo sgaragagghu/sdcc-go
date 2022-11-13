@@ -50,11 +50,43 @@ var (
 	stub_storage StubMapping
 )
 
-func initialization_algorithm_clustering(task_ptr *Task) (ret bool) {
-	ret = false
+func initialization_algorithm_clustering(task_ptr *Task) (ret error) {
+	ret = nil
 	resource_size := Get_file_size(task_ptr.Resource_link)
 	task_ptr.Iteration_algorithm_parameters.([]interface{})[0] = int(task_ptr.Iteration_algorithm_parameters.([]interface{})[0].(float64)) // check overflow
 	task_ptr.Map_algorithm_parameters.([]interface{})[0] = int((task_ptr.Map_algorithm_parameters.([]interface{})[0]).(float64)) // check overflow
+
+
+	var missing = ""
+	if task_ptr.Resource_link == "" { missing = "resource_link" }
+	if task_ptr.Mappers_amount == 0 { missing = "mappers_amount" }
+	if task_ptr.Margin == 0 { missing = "marign" }
+	if len(string(task_ptr.Separate_entries)) != 1 { missing = "separate_entries" }
+	if len(string(task_ptr.Separate_properties)) != 1 { missing = "separate_properties" }
+	if task_ptr.Properties_amount == 0 { missing = "properties_amount" }
+	if task_ptr.Initialization_algorithm == "" { missing = "initialization_algorithm" }
+	if task_ptr.Map_algorithm == "" { missing = "map_algorithm" }
+	if task_ptr.Map_algorithm_parameters == nil || len(task_ptr.Map_algorithm_parameters.([]interface{})) == 0 { missing = "map_algorithm_parameters" }
+	if task_ptr.Reducers_amount == 0 { missing = "reducers_amount" }
+	if task_ptr.Reduce_algorithm == "" { missing = "reduce_algorithm" }
+	if task_ptr.Iteration_algorithm == "" { missing = "iteration_algorithm" }
+	if task_ptr.Iteration_algorithm_parameters == nil || len(task_ptr.Map_algorithm_parameters.([]interface{})) == 0 { missing = "iteration_algorithm_parameters" }
+
+	if task_ptr.Id != -1 { missing = "start Id" }
+	if task_ptr.Origin_id != -1 { missing = "start Origin_id" }
+	if task_ptr.Send_time != 0 { missing = "start Send_time" }
+	if task_ptr.Keys_x_servers == nil { missing = "Keys_x_servers" }
+	if task_ptr.Keys_x_servers_version != 0 { missing = "start Keys_x_servers_version" }
+	if task_ptr.Jobs == nil { missing = "start Jobs" }
+	if task_ptr.Jobs_done == nil { missing = "start Jobs_done" }
+
+	if missing != "" {
+		ret = fmt.Errorf("Missing: %v", missing)
+		return
+	}
+
+
+
 	offsets := make([][]float64, task_ptr.Map_algorithm_parameters.([]interface{})[0].(int))
 
 	for i, _ := range offsets {
@@ -66,14 +98,23 @@ func initialization_algorithm_clustering(task_ptr *Task) (ret bool) {
 		load_ptr := Http_download(task_ptr.Resource_link, int64(offset), int64(offset + download_size))
 
 		actual_begin, err := Get_actual_begin(load_ptr, task_ptr.Separate_entries)
-		if err != nil { ErrorLoggerPtr.Fatal("get_actual_begin error:", err) }
+		if err != nil {
+			ret = fmt.Errorf("get_actual_begin error: %v", err)
+			return
+		}
 
 		actual_end, err := Get_actual_end(load_ptr, task_ptr.Separate_entries, actual_begin + 1)
-		if err != nil { ErrorLoggerPtr.Fatal("get_actual_end error:", err) }
+		if err != nil {
+			ret = fmt.Errorf("get_actual_end error: %v", err)
+			return
+		}
 
 		//InfoLoggerPtr.Println("Actual begin:", actual_begin, "actual end:", actual_end)
 
-		if actual_begin == actual_end { ErrorLoggerPtr.Fatal("Unexpected error") }
+		if actual_begin == actual_end {
+			ret = fmt.Errorf("Unexpected error")
+			return
+		}
 
 
 		reader := bytes.NewReader((*load_ptr)[actual_begin:actual_end + 1])
@@ -92,7 +133,6 @@ func initialization_algorithm_clustering(task_ptr *Task) (ret bool) {
 		InfoLoggerPtr.Println(v)
 	}
 
-	ret = true
 	return
 }
 
@@ -118,7 +158,11 @@ func task_injector_goroutine() { // TODO make a jsonrpc interface to send tasks 
 		make(map[string]*Job), make(map[string]*Job)}
 
 	// TODO check error and return...
-	/*_, _ := */Call("initialization_algorithm_" + task_ptr.Initialization_algorithm, stub_storage, task_ptr)
+	err1, err2 := Call("initialization_algorithm_" + task_ptr.Initialization_algorithm, stub_storage, task_ptr)
+
+	if err1 != nil || err2 != nil {
+		ErrorLoggerPtr.Fatal("iniziatialization error:", err1, err2)
+	}
 
 	select {
 	case Task_mapper_channel <- task_ptr:
@@ -541,25 +585,25 @@ func iteration_algorithm_clustering(task_ptr *Task, new_task_ptr_ptr **Task, key
 
 		if iteration_algorithm_clustering_deep_equal(old_keys_x_values, keys_x_values, task_ptr.Iteration_algorithm_parameters.([]interface{})[0].(int)) {
 			InfoLoggerPtr.Println("Fixpoint found, iteration concluded")
-			result_string := fmt.Sprintln("Task", task_ptr.Id, "origin task", task_ptr.Origin_id, "result:")
+			result_string := ""
 			for key, key_value_o := range keys_x_values {
 				key_value := key_value_o.([]float64)
 				result_string += fmt.Sprintln("key", key, "value", key_value)
+
 				//InfoLoggerPtr.Printf(result_string)
 
-				for loop := true; loop ; {
-					select {
-					case Result_for_JRPC_channel<-&result_string:
-						loop = false
-					default:
-						WarningLoggerPtr.Println("Result for JRPC channel is full, popping one element.")
-						select {
-						case <-Result_for_JRPC_channel:
-						default:
-						}
-					}
-				}
+			}
 
+			result_struct := &Task_result{task_ptr.Id, task_ptr.Origin_id, result_string}
+
+			select {
+			case Result_for_JRPC_channel<-result_struct:
+			default:
+				WarningLoggerPtr.Println("Result for JRPC channel is full, popping one element.")
+				select {
+				case <-Result_for_JRPC_channel:
+				default:
+				}
 			}
 			return true
 		}
@@ -977,7 +1021,7 @@ func Master_main() {
 
 	Task_from_JRPC_channel = make(chan *[]interface{}, 1000)
 
-	Result_for_JRPC_channel = make(chan *string, 1000)
+	Result_for_JRPC_channel = make(chan *Task_result, 1000)
 
 	go scheduler_reducer_goroutine()
 	go scheduler_mapper_goroutine()

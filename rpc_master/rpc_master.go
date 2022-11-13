@@ -5,6 +5,8 @@ import (
 //	json_parse "encoding/json"
 	"net/http"
 	"errors"
+//	"reflect"
+//	"strings"
 //	. "../rpc_mapper"
 //	"time"
 
@@ -22,7 +24,7 @@ var (
 	Job_mapper_completed_channel chan *Job
 	Job_reducer_completed_channel chan *Job
 	Task_from_JRPC_channel chan *[]interface{}
-	Result_for_JRPC_channel chan *string
+	Result_for_JRPC_channel chan *Task_result
 	Status_ptr *Status
 )
 
@@ -74,19 +76,12 @@ type Status struct {
 	Reducer_amount int `json:"reducer_amount"`
 }
 
-type Results_type struct {
-	Results string `json:"results"`
+type Task_result struct {
+	Id int32 `json:"id"`
+	Origin_id int32 `json:"origin_id"`
+	Result string `json:"result"`
 }
 
-type Send_task_reply_type struct {
-	Reply string `json:"reply"`
-}
-/*
-type status_json struct {
-	Mapper_amount int `json:"mapper_amount"`
-	Reducer_amount int `json:"reducer_amount"`
-}
-*/
 // create a type to get an interface
 type Master_handler int
 
@@ -168,7 +163,24 @@ func (h JSONServer) Send_task(r *http.Request, args *Task_json, reply *bool) err
 }
 
 
-func (h JSONServer) Get_results(r *http.Request, _ *struct{}, reply *string) error {
+func (h JSONServer) Get_results(r *http.Request, _ *struct{}, reply *[]Task_result) error {
+
+
+	for loop := true; loop; {
+		select {
+		case task_result_ptr := <-Result_for_JRPC_channel:
+			*reply = append(*reply, *task_result_ptr)
+		default:
+			loop = false
+		}
+	}
+
+	return nil
+}
+
+
+/*
+func (h JSONServer) Get_logs(r *http.Request, _ *struct{}, reply *string) error {
 	results := ""
 
 
@@ -180,13 +192,9 @@ func (h JSONServer) Get_results(r *http.Request, _ *struct{}, reply *string) err
 			loop = false
 		}
 	}
-//	full_string, err := json_parse.Marshal(results)
-	*reply = results
 
-//	if err != nil {
-//		ErrorLoggerPtr.Println("Get_results failed",  err)
-//	}
+	*reply = results
 
 	return nil
 }
-
+*/

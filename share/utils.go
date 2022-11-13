@@ -15,7 +15,6 @@ import (
 
 type StubMapping map[string]interface{}
 
-
 func Parser_simple(point *[]float64, buffered_read *bufio.Reader, separate_properties byte, separate_entries byte) (full_s string, err error) {
 
 	s := ""
