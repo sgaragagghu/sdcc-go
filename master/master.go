@@ -124,7 +124,7 @@ func initialization_algorithm_clustering(task_ptr *Task) (ret error) {
 
 	InfoLoggerPtr.Println("Seed:")
 	for i, v := range offsets {
-		if i < len(task_ptr.Map_algorithm_parameters.([]interface{})) {
+		if i >= len(task_ptr.Map_algorithm_parameters.([]interface{})) - 1 {
 			task_ptr.Map_algorithm_parameters = append(task_ptr.Map_algorithm_parameters.([]interface{}), v)
 		} else {
 			task_ptr.Map_algorithm_parameters.([]interface{})[i + 1] = v
@@ -162,6 +162,13 @@ func task_injector_goroutine() { // TODO make a jsonrpc interface to send tasks 
 
 	if err1 != nil || err2 != nil {
 		ErrorLoggerPtr.Fatal("iniziatialization error:", err1, err2)
+	}
+
+
+
+	for index, index_value_o := range task_ptr.Map_algorithm_parameters.([]interface{})[1:] {
+		index_value := index_value_o.([]float64)
+		InfoLoggerPtr.Println("key", index, "value", index_value)
 	}
 
 	select {
@@ -425,8 +432,39 @@ func scheduler_mapper_goroutine() {
 					if task_ptr.Send_time == 0 {
 						InfoLoggerPtr.Println("Task mapper completed, job", job_completed_ptr.Id, "task", job_completed_ptr.Task_id, ".")
 						task_ptr.Send_time = time.Now().Unix()
+						task_ptr2 := &Task{
+							Id:task_ptr.Id,
+							Origin_id:task_ptr.Origin_id,
+							Send_time:task_ptr.Send_time,
+							Resource_link:task_ptr.Resource_link,
+							Mappers_amount:task_ptr.Mappers_amount,
+							Margin:task_ptr.Margin,
+							Separate_entries:task_ptr.Separate_entries,
+							Separate_properties:task_ptr.Separate_properties,
+							Properties_amount:task_ptr.Properties_amount,
+							Initialization_algorithm:task_ptr.Initialization_algorithm,
+							Map_algorithm:task_ptr.Map_algorithm,
+							Map_algorithm_parameters:task_ptr.Map_algorithm_parameters,
+							Reducers_amount:task_ptr.Reducers_amount,
+							Reduce_algorithm:task_ptr.Reduce_algorithm,
+							Reduce_algorithm_parameters:task_ptr.Reduce_algorithm_parameters,
+							Iteration_algorithm:task_ptr.Iteration_algorithm,
+							Iteration_algorithm_parameters:task_ptr.Iteration_algorithm_parameters,
+							Keys_x_servers:orderedmap.NewOrderedMap(),
+							Keys_x_servers_version:0,
+							Jobs:make(map[string]*Job),
+							Jobs_done:make(map[string]*Job),
+						}
+
+						for node := task_ptr.Keys_x_servers.Front(); node != nil; node = node.Next(){
+							v := node.Value
+							k := node.Key.(string)
+							//InfoLoggerPtr.Println("chiave", k, "value", v)
+							task_ptr2.Keys_x_servers.Set(k, v)
+						}
+
 						select {
-						case Task_reducer_channel <- task_ptr:
+						case Task_reducer_channel <- task_ptr2:
 							select {
 							case New_task_reducer_event_channel <- struct{}{}:
 							default:
@@ -437,9 +475,16 @@ func scheduler_mapper_goroutine() {
 						}
 					} else {
 						InfoLoggerPtr.Println("Task mapper re - completed, job", job_completed_ptr.Id, "task", job_completed_ptr.Task_id, ".")
+						keys_x_servers := orderedmap.NewOrderedMap()
+
+						for node := task_ptr.Keys_x_servers.Front(); node != nil; node = node.Next(){
+							v := node.Value
+							k := node.Key.(string)
+							keys_x_servers.Set(k, v)
+						}
 
 						select {
-						case probable_reducer_error_channel <- &map_to_reduce_error{strconv.FormatInt(int64(task_ptr.Id), 10), task_ptr.Keys_x_servers}:
+						case probable_reducer_error_channel <- &map_to_reduce_error{strconv.FormatInt(int64(task_ptr.Id), 10), keys_x_servers}:
 						default:
 							ErrorLoggerPtr.Fatal("Probable_reducer_error_channel is full.")
 						}
@@ -489,7 +534,7 @@ func scheduler_mapper_goroutine() {
 					resource_size := Get_file_size(task_ptr.Resource_link)
 					mappers_amount := MinOf_int32(task_ptr.Mappers_amount, int32(len(idle_mapper_hashmap))) // TODO check overflow
 					if mappers_amount == 0 { mappers_amount = 1 }
-					slice_size := int64(math.Abs(float64(resource_size) / float64(mappers_amount))) // TODO math.Abs, does it make sense here ?
+					slice_size := int64(math.Abs(float64(resource_size) / float64(mappers_amount)))
 					jobs := make([]*Job, mappers_amount)
 					{
 						var i int32 = 0
@@ -544,7 +589,6 @@ func iteration_algorithm_clustering_deep_equal(a map[string]interface{}, b map[s
 		}
 
 		for i2, v2 := range v {
-			//InfoLoggerPtr.Println("Difference", math.Abs(v2 - b_i[i2]), "margin", (v2 / 100) * float64(max_diff) )
 			diff := math.Abs(v2 - b_i[i2])
 			if diff > (math.Abs(v2) / 100) * float64(max_diff) && diff > (math.Abs(b_i[i2]) / 100) * float64(max_diff) {
 				return false
@@ -554,30 +598,11 @@ func iteration_algorithm_clustering_deep_equal(a map[string]interface{}, b map[s
 
 	}
 
-	/*
-	for i, v_o := range a {
-		v := v_o.(map[string]struct{})
-		b_i := b[i].(map[string]struct{})
-		if len(v) != len(b_i) {
-			WarningLoggerPtr.Println("Lengths are supposed to be equal!")
-			return false
-		}
-
-		for i2, v2 := range v {
-			if v2 != b_i[i2] { return false }
-		}
-
-	}*/
-
 	return true
 }
 
 func iteration_algorithm_clustering(task_ptr *Task, new_task_ptr_ptr **Task, keys_x_values map[string]interface{}) (bool) {
-/*
-	if task_ptr.iteration_algorithm_parameters == nil {
-		task_ptr.iteration_algorithm_parameters = make([]interface{}, 0)
-	}
-*/
+
 	if len(task_ptr.Iteration_algorithm_parameters.([]interface{})) == 1 {
 		task_ptr.Iteration_algorithm_parameters = append(task_ptr.Iteration_algorithm_parameters.([]interface{}), keys_x_values)
 	} else {
@@ -612,33 +637,9 @@ func iteration_algorithm_clustering(task_ptr *Task, new_task_ptr_ptr **Task, key
 	}
 
 	for index_string, value := range keys_x_values {
-		// i := 1
-		// value := value_o.(map[string]struct{})
+
 		index, _ := strconv.Atoi(index_string) // TODO check error
 		task_ptr.Map_algorithm_parameters.([]interface{})[index + 1] = value.([]float64)
-		/*
-		for string_point, _ := range value {
-				reader := bytes.NewReader([]byte(string_point))
-				buffered_read := bufio.NewReader(reader)
-				point := make([]float64, properties_amount)
-				j := 1
-				s := ""
-			for char, err := buffered_read.ReadByte(); err == nil; char, err = buffered_read.ReadByte() {
-				//InfoLoggerPtr.Println(string(char))
-				if char == separate_properties {
-					if j <= properties_amount {
-						point[j - 1], _ = strconv.ParseFloat(s, 64) // TODO check the error
-						//full_s += string(separate_properties) + s
-						s = ""
-						break
-					} else { ErrorLoggerPtr.Fatal("Parsing failed") }
-				} else {
-					s += string(char) // TODO Try to use a buffer like bytes.NewBufferString(ret) for better performances
-				}
-			}
-			clustering_parameters[i] = point
-		}
-		*/
 	}
 
 	if task_ptr.Origin_id == -1 { task_ptr.Origin_id = task_ptr.Id }
@@ -654,13 +655,6 @@ func iteration_algorithm_clustering(task_ptr *Task, new_task_ptr_ptr **Task, key
 		index_value := index_value_o.([]float64)
 		InfoLoggerPtr.Println("key", index, "value", index_value)
 	}
-	/*
-	for key, key_value_o := range keys_x_values {
-		key_value := key_value_o.(map[string]struct{})
-		for index, _ := range key_value {
-			InfoLoggerPtr.Println("key", key, "value", index)
-		}
-	}*/
 	return false
 }
 
