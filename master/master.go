@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"bufio"
 	"fmt"
+	"errors"
 
 	"github.com/elliotchance/orderedmap"
 
@@ -188,25 +189,31 @@ func task_injector_goroutine() {
 	for {
 		select {
 		case slice := <-Task_from_JRPC_channel:
-			reply := false
+			var reply error = nil
 			task_ptr := ((*slice)[1]).(*Task)
 
-			Call("initialization_algorithm_" + task_ptr.Initialization_algorithm, stub_storage, task_ptr)
+			err1, err2 := Call("initialization_algorithm_" + task_ptr.Initialization_algorithm, stub_storage, task_ptr)
 
-			select {
-			case Task_mapper_channel <- task_ptr:
+			if err1 != nil { reply = err1.(error) }
+			if err2 != nil { reply = err2 }
+
+			if reply != nil {
 				select {
-				case New_task_mapper_event_channel <- struct{}{}:
-					InfoLoggerPtr.Println("Task correctly injected")
-					reply = true
+				case Task_mapper_channel <- task_ptr:
+					select {
+					case New_task_mapper_event_channel <- struct{}{}:
+						InfoLoggerPtr.Println("Task correctly injected")
+					default:
+						WarningLoggerPtr.Fatal("Task channel is full")
+						reply = errors.New("Task channel is full")
+					}
 				default:
 					WarningLoggerPtr.Fatal("Task channel is full")
+					reply = errors.New("Task channel is full")
 				}
-			default:
-				WarningLoggerPtr.Fatal("Task channel is full")
 			}
 			select {
-			case (*slice)[0].(chan bool)<-reply:
+			case (*slice)[0].(chan error)<-reply:
 			default:
 				WarningLoggerPtr.Println("Reply channel is full.")
 			}

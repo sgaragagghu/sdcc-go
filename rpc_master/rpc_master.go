@@ -144,7 +144,7 @@ func (h JSONServer) Send_task(r *http.Request, args *Task_json, reply *bool) err
 	}
 
 	slice := make([]interface{}, 2)
-	slice[0] = make(chan bool, 1)
+	slice[0] = make(chan error, 1)
 	slice[1] = task_ptr
 	reply_value := false
 	var err error = nil
@@ -152,12 +152,13 @@ func (h JSONServer) Send_task(r *http.Request, args *Task_json, reply *bool) err
 	select {
 	case Task_from_JRPC_channel <- &slice:
 		select {
-		case reply_value = <-slice[0].(chan bool):
+		case err = <-slice[0].(chan error):
 		}
 	default:
 		WarningLoggerPtr.Println("JRPC task channel is full")
 		err = errors.New("JRPC task channel is full")
 	}
+	if err == nil { reply_value = true }
 	*reply = reply_value
 	return err
 }
