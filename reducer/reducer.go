@@ -159,11 +159,11 @@ func task_manager_goroutine() {
 
 	state := IDLE
 	task_hashmap := make(map[string]*list.List)
-	task_finished_hashmap := orderedmap.NewOrderedMap()
+	//task_finished_hashmap := orderedmap.NewOrderedMap()
 	ready_event_channel := make(chan struct{}, 1000)
 	job_finished_channel := make(chan *Job, 1000)
 	job_finished_channel_ptr := &job_finished_channel
-	next_check_task := ""
+	//next_check_task := ""
 
 	for {
 		select {
@@ -193,7 +193,7 @@ func task_manager_goroutine() {
 				job_list_ptr.Remove(job_list_ptr.Front())
 				if job_list_ptr.Len() == 0 { delete (task_hashmap, job_finished_ptr.Task_id) }
 			} else { ErrorLoggerPtr.Fatal("Finished job not found!") }
-
+			/*
 			{
 				job_map, ok := task_finished_hashmap.Get(job_finished_ptr.Task_id)
 				if !ok {
@@ -202,7 +202,7 @@ func task_manager_goroutine() {
 				}
 				job_map.(map[string]*Job)[job_finished_ptr.Id] = job_finished_ptr
 			}
-
+			*/
 			if len(task_hashmap) > 0 {
 				select{
 				case ready_event_channel <- struct{}{}:
@@ -235,7 +235,7 @@ func task_manager_goroutine() {
 					state = BUSY
 				} else { ErrorLoggerPtr.Fatal("Unexpected empty task hashmap.") }
 			}
-		case <-time.After(10 * SECOND):
+		/*case <-time.After(10 * SECOND):
 			if task_finished_hashmap.Front() != nil {
 				if next_check_task == "" { next_check_task = task_finished_hashmap.Front().Key.(string) }
 				if el := task_finished_hashmap.GetElement(next_check_task); el != nil {
@@ -254,6 +254,7 @@ func task_manager_goroutine() {
 					if len(job_map_ptr) == 0 { task_finished_hashmap.Delete(checking_task) }
 				} else { ErrorLoggerPtr.Fatal("Task is missing") }
 			}
+		*/
 		}
 	}
 }
