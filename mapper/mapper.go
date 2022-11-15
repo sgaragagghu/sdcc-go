@@ -162,6 +162,7 @@ func task_manager_goroutine() {
 	job_finished_channel := make(chan *Job, 1000)
 	job_finished_channel_ptr := &job_finished_channel
 	next_check_task := ""
+	to_delete_tasks := make(map[string]string)
 
 	for {
 		select {
@@ -240,6 +241,8 @@ func task_manager_goroutine() {
 			jobs_hashmap, ok := task_finished_hashmap.Get(request_ptr.Body.([]string)[0])
 			if !ok { ErrorLoggerPtr.Fatal("Missing task") }
 			go prepare_and_send_job_full_goroutine(request_ptr, jobs_hashmap.(map[string]*Job))
+		case task_completed_id_ptr := <-Task_completed_channel:
+			to_delete_tasks[*task_completed_id_ptr] = *task_completed_id_ptr
 		case <-time.After(10 * SECOND):
 			if task_finished_hashmap.Front() != nil {
 				if next_check_task == "" { next_check_task = task_finished_hashmap.Front().Key.(string) }
@@ -254,7 +257,8 @@ func task_manager_goroutine() {
 						next_check_task = ""
 					}
 					for key, value := range job_map_ptr {
-						if value.Delete { delete(job_map_ptr, key) }
+						//if value.Delete { delete(job_map_ptr, key) }
+						if _, ok := to_delete_tasks[value.Task_id]; ok { delete(job_map_ptr, key) }
 					}
 					if len(job_map_ptr) == 0 { task_finished_hashmap.Delete(checking_task) }
 				} else { ErrorLoggerPtr.Fatal("Task is missing") }
@@ -318,6 +322,8 @@ func Mapper_main() {
 	// creating channel for communicating the task
 	// to the goroutine task manager
 	Job_channel = make(chan *Job, 1000)
+
+	Task_completed_channel = make(chan *string, 1000)
 
 	//go task_goroutine()
 
