@@ -29,8 +29,8 @@ var (
 )
 
 type Task struct {
-	Id int32 `json:"id, omitempty"`
-	Origin_id int32 `json:"origin_id, omitempty"`
+	Id string `json:"id, omitempty"`
+	Origin_id string `json:"origin_id, omitempty"`
 	Send_time int64 `json:"send_time, omitempty"`
 	Resource_link string `json:"resource_link, omitempty"`
 	Mappers_amount int32 `json:"mappers_amount, omitempty"`
@@ -77,8 +77,8 @@ type Status struct {
 }
 
 type Task_result struct {
-	Id int32 `json:"id"`
-	Origin_id int32 `json:"origin_id"`
+	Id string `json:"id"`
+	Origin_id string `json:"origin_id"`
 	Result string `json:"result"`
 }
 
@@ -120,8 +120,8 @@ func (h JSONServer) Get_status(r *http.Request, _ *struct{}, reply *Status) erro
 func (h JSONServer) Send_task(r *http.Request, args *Task_json, reply *bool) error {
 
 	task_ptr := &Task{
-		Id:-1,
-		Origin_id:-1,
+		Id:"-1",
+		Origin_id:"-1",
 		Send_time:0,
 		Resource_link:args.Resource_link,
 		Mappers_amount:args.Mappers_amount,
