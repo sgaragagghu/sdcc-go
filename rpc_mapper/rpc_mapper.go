@@ -14,7 +14,7 @@ var (
 	This_server *Server
 	Job_channel chan *Job
 	Job_full_request_channel chan *Request
-	Task_completed_channel chan map[string]interface{}
+	Task_completed_channel chan map[string]struct{}
 )
 
 // create a type to get an interface
@@ -26,7 +26,7 @@ func (h Mapper_handler) Send_job(args *Job, reply *int) error {
 }
 
 func (h Mapper_handler) Task_completed(args *Request, reply *struct{}) error {
-	//Task_completed_channel <- args.Body.(map[string]interface{})
+	Task_completed_channel <- args.Body.(map[string]struct{})
 	return nil
 }
 
