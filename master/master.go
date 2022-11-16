@@ -753,7 +753,7 @@ func clean_mappers_goroutine(servers_x_tasks map[string]map[string]struct{}, ser
 		server_ptr := servers_map[server_id]
 		go Rpc_request_goroutine(server_ptr, req, "Mapper_handler.Task_completed",
 			"Sent completed task notification " + fmt.Sprint(task_map) +  " to the mapper " + server_ptr.Id,
-			3, EXPIRE_TIME, false)
+			1, EXPIRE_TIME, false, true)
 	}
 }
 
