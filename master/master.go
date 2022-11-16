@@ -3,14 +3,14 @@ package master
 import (
 	. "../share"
 	. "../rpc_master"
-//	. "../rpc_mapper"
+	//. "../rpc_mapper"
 	"net"
 	go_rpc "net/rpc"
 	"net/http"
 	//"net/rpc/jsonrpc"
 	"reflect"
 	"time"
-	"encoding/gob"
+	//"encoding/gob"
 	//"container/list"
 	"math"
 	"math/rand"
@@ -511,7 +511,7 @@ func scheduler_mapper_goroutine() {
 			task_hashmap.Delete(task_id)
 
 			servers_map := make(map[string]*Server)
-			servers_x_tasks := make(map[string]map[string]string)
+			servers_x_tasks := make(map[string]map[string]struct{})
 			for server_id, task_map := range servers_x_tasks_x_jobs_done {
 				if server_ptr, ok := idle_mapper_hashmap[server_id]; ok {
 					servers_map[server_id] = server_ptr
@@ -519,12 +519,12 @@ func scheduler_mapper_goroutine() {
 					servers_map[server_id] = server_ptr
 				}
 				if _, ok := servers_map[server_id]; ok {
-					servers_x_tasks[server_id] = make(map[string]string)
+					servers_x_tasks[server_id] = make(map[string]struct{})
 					for task_id, _ := range task_map {
 						if _, ok2 := task_hashmap.Get(task_id); ok2 {
 							continue
 						}
-						servers_x_tasks[server_id][task_id] = task_id
+						servers_x_tasks[server_id][task_id] = struct{}{}
 					}
 				}
 
@@ -739,7 +739,7 @@ func assign_job_reducer(server_ptr *Server, job_ptr *Job, working_reducer_hashma
 
 }
 
-func clean_mappers_goroutine(servers_x_tasks map[string]map[string]string, servers_map map[string]*Server) {
+func clean_mappers_goroutine(servers_x_tasks map[string]map[string]struct{}, servers_map map[string]*Server) {
 	for server_id, task_map := range servers_x_tasks {
 		if len(task_map) == 0 { continue }
 		req := &Request{
@@ -1039,8 +1039,8 @@ func Master_main() {
 
 	rand.Seed(time.Now().UnixNano())
 
-	gob.Register([]interface{}(nil))
-	gob.Register(map[string]string(nil))
+	//gob.Register([]interface{}(nil))
+	//gob.Register(map[string]string(nil))
 
 	stub_storage = map[string]interface{}{
 		"iteration_algorithm_clustering": iteration_algorithm_clustering,
