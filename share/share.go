@@ -86,7 +86,7 @@ func init() {
 
 }
 
-func Rpc_request_goroutine(server *Server, load *Request, method string,  log_message string, retry int, delay time.Duration, error_is_fatal bool) (interface{}) {
+func Rpc_request_goroutine(server *Server, load *Request, method string,  log_message string, retry int, delay time.Duration, error_is_fatal bool, call_bug bool) (interface{}) {
 
 	// TODO probably it is needed to use the already connection which is in place for the heartbeat
 
@@ -115,6 +115,11 @@ func Rpc_request_goroutine(server *Server, load *Request, method string,  log_me
 
 	for ; retry > 0; retry -= 1 {
 		err = client.Call(method, load, &reply)
+		if call_bug {
+			err = nil
+			break
+		}
+
 		if err == nil {
 			break
 		} else {
