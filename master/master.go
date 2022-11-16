@@ -509,6 +509,28 @@ func scheduler_mapper_goroutine() {
 
 		case task_id := <-task_reducer_completed_channel:
 			task_hashmap.Delete(task_id)
+
+			servers_map := make(map[string]*Server)
+			servers_x_tasks := make(map[string]map[string]string)
+			for server_id, task_map := range servers_x_tasks_x_jobs_done {
+				if server_ptr, ok := idle_mapper_hashmap[server_id]; ok {
+					servers_map[server_id] = server_ptr
+				} else if server_ptr, ok := working_mapper_hashmap[server_id]; ok {
+					servers_map[server_id] = server_ptr
+				}
+				if _, ok := servers_map[server_id]; ok {
+					servers_x_tasks[server_id] = make(map[string]string)
+					for task_id, _ := range task_map {
+						if _, ok2 := task_hashmap.Get(task_id); ok2 {
+							continue
+						}
+						servers_x_tasks[server_id][task_id] = task_id
+					}
+				}
+
+			}
+			go clean_mappers_goroutine(servers_x_tasks, servers_map)
+
 			if task_hashmap.Len() < MAX_MAP_TASKS && len(Task_mapper_channel) > 0 { // if the curent task finished and theres a task
 				select {
 				case New_task_mapper_event_channel <-struct{}{}:
@@ -719,7 +741,7 @@ func assign_job_reducer(server_ptr *Server, job_ptr *Job, working_reducer_hashma
 
 func clean_mappers_goroutine(servers_x_tasks map[string]map[string]string, servers_map map[string]*Server) {
 	for server_id, task_map := range servers_x_tasks {
-
+		if len(task_map) == 0 { continue }
 		req := &Request{
 			Sender: nil,
 			Receiver:nil,
@@ -729,7 +751,7 @@ func clean_mappers_goroutine(servers_x_tasks map[string]map[string]string, serve
 		}
 
 		server_ptr := servers_map[server_id]
-		go Rpc_request_goroutine(server_ptr, req, "Mapper_handler.Completed_task",
+		go Rpc_request_goroutine(server_ptr, req, "Mapper_handler.Task_completed",
 			"Sent completed task notification " + fmt.Sprint(task_map) +  " to the mapper " + server_ptr.Id,
 			3, EXPIRE_TIME, false)
 	}
@@ -922,22 +944,6 @@ func scheduler_reducer_goroutine() {
 
 
 					// cleaning completed tasks
-					servers_map := make(map[string]*Server)
-					servers_x_tasks := make(map[string]map[string]string)
-					for server_id, task_map := range servers_x_tasks_x_jobs_done {
-						if server_ptr, ok := idle_reducer_hashmap[server_id]; ok {
-							servers_map[server_id] = server_ptr
-						} else if server_ptr, ok := working_reducer_hashmap[server_id]; ok {
-							servers_map[server_id] = server_ptr
-						}
-						if _, ok := servers_map[server_id]; ok {
-							servers_x_tasks[server_id] = make(map[string]string)
-							for task_id, _ := range task_map {
-								servers_x_tasks[server_id][task_id] = task_id
-							}
-						}
-					}
-					go clean_mappers_goroutine(servers_x_tasks, servers_map)
 					for _, task_map := range servers_x_tasks_x_jobs_done {
 						for task_id, _ := range task_map {
 							if _, ok := task_hashmap.Get(task_id); !ok {
@@ -1034,6 +1040,7 @@ func Master_main() {
 	rand.Seed(time.Now().UnixNano())
 
 	gob.Register([]interface{}(nil))
+	gob.Register(map[string]string(nil))
 
 	stub_storage = map[string]interface{}{
 		"iteration_algorithm_clustering": iteration_algorithm_clustering,
