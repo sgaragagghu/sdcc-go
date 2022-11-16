@@ -325,7 +325,7 @@ func Mapper_main() {
 	// to the goroutine task manager
 	Job_channel = make(chan *Job, 1000)
 
-	Task_completed_channel = make(chan map[string]interface{}, 1000)
+	Task_completed_channel = make(chan map[string]struct{}, 1000)
 
 	//go task_goroutine()
 
