@@ -276,6 +276,7 @@ func init() {
 	gob.Register([]interface{}(nil))
 	gob.Register(map[string]interface{}(nil))
 	gob.Register(map[string]struct{}(nil))
+	gob.Register(map[string]string(nil))
 
 	stub_storage = map[string]interface{}{
 		"mapper_algorithm_clustering": mapper_algorithm_clustering,
