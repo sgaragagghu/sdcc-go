@@ -11,7 +11,7 @@ import (
 	"time"
 	"net/rpc"
 	"crypto/sha256"
-	"encoding/gob"
+	//"encoding/gob"
 	"net"
 	"reflect"
 	"container/list"
@@ -273,10 +273,9 @@ func init() {
 
 	Job_full_request_channel = make(chan *Request, 1000)
 
-	gob.Register([]interface{}(nil))
-	gob.Register(map[string]interface{}(nil))
-	gob.Register(map[string]struct{}(nil))
-	gob.Register(map[string]string(nil))
+	//gob.Register([]interface{}(nil))
+	//gob.Register(map[string]interface{}(nil))
+	//gob.Register(map[string]struct{}(nil))
 
 	stub_storage = map[string]interface{}{
 		"mapper_algorithm_clustering": mapper_algorithm_clustering,
@@ -326,7 +325,7 @@ func Mapper_main() {
 	// to the goroutine task manager
 	Job_channel = make(chan *Job, 1000)
 
-	Task_completed_channel = make(chan map[string]string, 1000)
+	Task_completed_channel = make(chan map[string]interface{}, 1000)
 
 	//go task_goroutine()
 
