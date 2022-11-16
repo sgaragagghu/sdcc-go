@@ -717,6 +717,24 @@ func assign_job_reducer(server_ptr *Server, job_ptr *Job, working_reducer_hashma
 
 }
 
+func clean_mappers_goroutine(servers_x_tasks map[string]map[string]string, servers_map map[string]*Server) {
+	for server_id, task_map := range servers_x_tasks {
+
+		req := &Request{
+			Sender: nil,
+			Receiver:nil,
+			Tries: 3,
+			Time: time.Now(),
+			Body:task_map,
+		}
+
+		server_ptr := servers_map[server_id]
+		go Rpc_request_goroutine(server_ptr, req, "Mapper_handler.Completed_task",
+			"Sent completed task notification " + fmt.Sprint(task_map) +  " to the mapper " + server_ptr.Id,
+			3, EXPIRE_TIME, false)
+	}
+}
+
 func scheduler_reducer_goroutine() {
 	InfoLoggerPtr.Println("Scheduler_reducer_goroutine started.")
 
@@ -727,7 +745,7 @@ func scheduler_reducer_goroutine() {
 	working_reducer_hashmap := make(map[string]*Server)
 	task_hashmap := orderedmap.NewOrderedMap()
 	servers_x_tasks_x_jobs := make(map[string]map[string]map[string]*Job)
-	// servers_x_tasks_x_jobs_done := make(map[string]map[string]map[string]*Job) // Not needed...
+	servers_x_tasks_x_jobs_done := make(map[string]map[string]map[string]*Job)
 	keys_x_values := make(map[string]interface{})
 
 	for {
@@ -803,12 +821,12 @@ func scheduler_reducer_goroutine() {
 			}
 			delete(working_reducer_hashmap, rem_reducer_ptr.Id)
 			delete(servers_x_tasks_x_jobs, rem_reducer_ptr.Id)
-			//delete(servers_x_tasks_x_jobs_done, rem_reducer_ptr.Id)
+			delete(servers_x_tasks_x_jobs_done, rem_reducer_ptr.Id)
 
 		case add_reducer_ptr := <-add_reducer_channel:
 			InfoLoggerPtr.Println("Reducer", add_reducer_ptr.Id, "ip", add_reducer_ptr.Ip, "port", add_reducer_ptr.Port, "is being added")
 			servers_x_tasks_x_jobs[add_reducer_ptr.Id] = make(map[string]map[string]*Job)
-			//servers_x_tasks_x_jobs_done[add_reducer_ptr.Id] = make(map[string]map[string]*Job)
+			servers_x_tasks_x_jobs_done[add_reducer_ptr.Id] = make(map[string]map[string]*Job)
 
 			if state != WAIT {
 				select {
@@ -825,14 +843,14 @@ func scheduler_reducer_goroutine() {
 			task_ptr_o, present := task_hashmap.Get(job_completed_ptr.Task_id)
 			if !present { break }
 			task_ptr := task_ptr_o.(*Task)
-			/*{
+			{
 				job_map, ok := servers_x_tasks_x_jobs_done[job_completed_ptr.Server_id][job_completed_ptr.Task_id]
 				if !ok {
 					job_map = make(map[string]*Job)
 					servers_x_tasks_x_jobs_done[job_completed_ptr.Server_id][job_completed_ptr.Task_id] = job_map
 				}
 				job_map[job_completed_ptr.Id] = job_completed_ptr
-			}*/
+			}
 
 			for key, key_value := range job_completed_ptr.Result {
 				_, ok := keys_x_values[key]
@@ -901,6 +919,33 @@ func scheduler_reducer_goroutine() {
 							loop = false
 						}
 					}
+
+
+					// cleaning completed tasks
+					servers_map := make(map[string]*Server)
+					servers_x_tasks := make(map[string]map[string]string)
+					for server_id, task_map := range servers_x_tasks_x_jobs_done {
+						if server_ptr, ok := idle_reducer_hashmap[server_id]; ok {
+							servers_map[server_id] = server_ptr
+						} else if server_ptr, ok := working_reducer_hashmap[server_id]; ok {
+							servers_map[server_id] = server_ptr
+						}
+						if _, ok := servers_map[server_id]; ok {
+							servers_x_tasks[server_id] = make(map[string]string)
+							for task_id, _ := range task_map {
+								servers_x_tasks[server_id][task_id] = task_id
+							}
+						}
+					}
+					go clean_mappers_goroutine(servers_x_tasks, servers_map)
+					for _, task_map := range servers_x_tasks_x_jobs_done {
+						for task_id, _ := range task_map {
+							if _, ok := task_hashmap.Get(task_id); !ok {
+								delete(task_map, task_id)
+							}
+						}
+					}
+
 					task_hashmap.Set(task_ptr.Id, task_ptr)
 					state = BUSY
 					InfoLoggerPtr.Println("Scheduling reducer task:", task_ptr.Id)

@@ -25,8 +25,8 @@ func (h Mapper_handler) Send_job(args *Job, reply *int) error {
 	return nil
 }
 
-func (h Mapper_handler) Task_completed(args map[string]string, reply *struct{}) error {
-	Task_completed_channel <- args
+func (h Mapper_handler) Task_completed(args *Request, reply *struct{}) error {
+	Task_completed_channel <- args.Body.(map[string]string)
 	return nil
 }
 
