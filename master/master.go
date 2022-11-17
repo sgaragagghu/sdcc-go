@@ -54,8 +54,11 @@ var (
 func initialization_algorithm_clustering(task_ptr *Task) (ret error) {
 	ret = nil
 	resource_size := Get_file_size(task_ptr.Resource_link)
-	task_ptr.Iteration_algorithm_parameters.([]interface{})[0] = int(task_ptr.Iteration_algorithm_parameters.([]interface{})[0].(float64)) // check overflow
-	task_ptr.Map_algorithm_parameters.([]interface{})[0] = int((task_ptr.Map_algorithm_parameters.([]interface{})[0]).(float64)) // check overflow
+
+	if Check_float64_to_int_overflow(task_ptr.Iteration_algorithm_parameters.([]interface{})[0].(float64)) { ErrorLoggerPtr.Println("Overflow!!") }
+	task_ptr.Iteration_algorithm_parameters.([]interface{})[0] = int(task_ptr.Iteration_algorithm_parameters.([]interface{})[0].(float64))
+	if Check_float64_to_int_overflow(task_ptr.Map_algorithm_parameters.([]interface{})[0].(float64)) { ErrorLoggerPtr.Println("Overflow!!") }
+	task_ptr.Map_algorithm_parameters.([]interface{})[0] = int((task_ptr.Map_algorithm_parameters.([]interface{})[0]).(float64))
 
 
 	var missing = ""
@@ -92,9 +95,12 @@ func initialization_algorithm_clustering(task_ptr *Task) (ret error) {
 
 	for i, _ := range offsets {
 		offsets[i] = make ([]float64, 2)
-		download_size := int(math.Abs(((float64(resource_size) / float64(task_ptr.Mappers_amount)) / 100) * float64(task_ptr.Margin))) // TODO check overflow
-		// TODO check possible overflow
-		offset := rand.Intn(int(resource_size) - download_size) // TODO check seed
+		if Check_float64_to_int_overflow(math.Abs(((float64(resource_size) / float64(task_ptr.Mappers_amount)) / 100) * float64(task_ptr.Margin))) {
+			ErrorLoggerPtr.Println("Overflow!!")
+		}
+		download_size := int(math.Abs(((float64(resource_size) / float64(task_ptr.Mappers_amount)) / 100) * float64(task_ptr.Margin)))
+		if resource_size > MaxInt { ErrorLoggerPtr.Println("Overflow!") }
+		offset := rand.Intn(int(resource_size) - download_size)
 
 		load_ptr := Http_download(task_ptr.Resource_link, int64(offset), int64(offset + download_size))
 
@@ -418,9 +424,9 @@ func scheduler_mapper_goroutine() {
 					keys_x_servers.Set(v, value)
 				}
 				server := working_mapper_hashmap[job_completed_ptr.Server_id]
-				// TODO manage it in a way to not waste memory
-				server_light := Server{server.Id, server.Ip, server.Port, server.Last_heartbeat, server.Role}
-				value.(map[string]*Server)[job_completed_ptr.Server_id] = &server_light
+
+				//server_light := Server{server.Id, server.Ip, server.Port, server.Last_heartbeat, server.Role}
+				value.(map[string]*Server)[job_completed_ptr.Server_id] = server //&server_light
 			}
 			if len(servers_x_tasks_x_jobs[job_completed_ptr.Server_id]) == 0 {
 				for loop := true; loop; {
@@ -572,8 +578,10 @@ func scheduler_mapper_goroutine() {
 					task_hashmap.Set(task_ptr.Id, task_ptr)
 					InfoLoggerPtr.Println("Scheduling mapper task:", task_ptr.Id)
 					resource_size := Get_file_size(task_ptr.Resource_link)
-					mappers_amount := MinOf_int32(task_ptr.Mappers_amount, int32(len(idle_mapper_hashmap))) // TODO check overflow
+					if int64(len(idle_mapper_hashmap)) > MaxInt { ErrorLoggerPtr.Println("Overflow!!") }
+					mappers_amount := MinOf_int32(task_ptr.Mappers_amount, int32(len(idle_mapper_hashmap)))
 					if mappers_amount == 0 { mappers_amount = 1 }
+					if float64(resource_size) / float64(mappers_amount) > math.MaxInt64 { ErrorLoggerPtr.Println("Overflow!!") }
 					slice_size := int64(math.Abs(float64(resource_size) / float64(mappers_amount)))
 					jobs := make([]*Job, mappers_amount)
 					{
@@ -955,13 +963,18 @@ func scheduler_reducer_goroutine() {
 					task_hashmap.Set(task_ptr.Id, task_ptr)
 					state = BUSY
 					InfoLoggerPtr.Println("Scheduling reducer task:", task_ptr.Id)
-					keys_amount := int32(task_ptr.Keys_x_servers.Len()) // TODO check overflow
-					reducers_amount := MinOf_int32(task_ptr.Reducers_amount, int32(len(idle_reducer_hashmap))) // TODO check overflow
+					if task_ptr.Keys_x_servers.Len() > math.MaxInt32 { ErrorLoggerPtr.Println("Overflow!!") }
+					keys_amount := int32(task_ptr.Keys_x_servers.Len())
+					if len(idle_reducer_hashmap) > math.MaxInt32 { ErrorLoggerPtr.Println("Overflow!!") }
+					reducers_amount := MinOf_int32(task_ptr.Reducers_amount, int32(len(idle_reducer_hashmap)))
 					slice_size := 1
 					if reducers_amount == 0 { reducers_amount = 1 }
 					var slice_rest int32 = 0
 					if keys_amount > reducers_amount {
-						slice_size = int(math.Abs(float64(keys_amount) / float64(reducers_amount))) // TODO check overflow
+						if Check_float64_to_int_overflow(math.Abs(float64(keys_amount) / float64(reducers_amount))) {
+							ErrorLoggerPtr.Println("Overflow!!")
+						}
+						slice_size = int(math.Abs(float64(keys_amount) / float64(reducers_amount)))
 						slice_rest = keys_amount % reducers_amount
 					}
 					if reducers_amount == 0 { reducers_amount = 1 }

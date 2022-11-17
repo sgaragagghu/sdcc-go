@@ -11,9 +11,34 @@ import (
 	"fmt"
 	"bufio"
 	"bytes"
+	"unsafe"
 )
 
 type StubMapping map[string]interface{}
+
+var MaxInt int64
+
+const BYTE_SIZE = 8
+
+func init() {
+	var try int = 0
+	bit := unsafe.Sizeof(try) * BYTE_SIZE
+	MaxInt =  1<<(bit - 1) - 1
+}
+
+func Check_float64_to_int_overflow(a float64) (bool) {
+
+	//fmt.Println("maxint", MaxInt, "maxint64",math.MaxInt64, "maxint32", math.MaxInt32)
+
+	if MaxInt == math.MaxInt64 {
+		if a > math.MaxInt64 { return true }
+	} else if MaxInt == math.MaxInt32 {
+		if a > math.MaxInt32 { return true }
+	} else {
+		WarningLoggerPtr.Println("Unexpected error.")
+	}
+	return false
+}
 
 func First_words(value string, count int) string {
 	// Loop over all indexes in the string.
