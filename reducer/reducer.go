@@ -223,10 +223,10 @@ func task_manager_goroutine() {
 					min := -1
 					task_id_int := -1
 					var err error
-					for task_id, _ := range task_hashmap { // TODO change the hashmap with an ordered one.
+					for task_id, _ := range task_hashmap {
 						task_id_int, err = strconv.Atoi(task_id)
 						if err != nil {
-							ErrorLoggerPtr.Fatal("String to integer error:", err) // TODO consider to use a integer instead of a string.
+							ErrorLoggerPtr.Fatal("String to integer error:", err)
 						}
 						if min == -1 || min > task_id_int { min = task_id_int }
 					}
@@ -276,23 +276,6 @@ func init() {
 	id = ip + MAPPER_PORT + APP_ID + strconv.FormatInt(time.Now().Unix(), 10)
 	id = fmt.Sprintf("%x", sha256.Sum256([]byte(id)))
 
-/*
-	bytes, err := ioutil.ReadFile("./ID")
-	if string(bytes) == "" || err != nil {
-
-		id = ip + MAPPER_PORT + APP_ID + strconv.FormatInt(time.Now().Unix(), 10)
-		id = fmt.Sprintf("%x", sha256.Sum256([]byte(id)))
-
-		file, err := os.Create("./ID")
-		if err != nil {
-			ErrorLoggerPtr.Fatal("Cannot create ID file.", err)
-		}
-		file.WriteString(id)
-		file.Close()
-	} else {
-		id = string(bytes)
-	}
-*/
 	if id == "" {
 		ErrorLoggerPtr.Fatal("Empty ID."/*, err*/)
 	}
