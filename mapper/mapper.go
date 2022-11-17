@@ -99,7 +99,7 @@ func mapper_algorithm_clustering(properties_amount int, keys *[]string, separate
 
 func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 
-	// TODO check possible overflow
+	if math.Abs(float64((job_ptr.End - job_ptr.Begin)) * ((100 + float64(job_ptr.Margin))/100)) > math.MaxInt64 { ErrorLoggerPtr.Println("Overflow!!") }
 	load_ptr := Http_download(job_ptr.Resource_link, job_ptr.Begin, job_ptr.Begin + int64(math.Abs(float64((job_ptr.End - job_ptr.Begin)) * ((100 + float64(job_ptr.Margin))/100))))
 
 	actual_begin, err := Get_actual_begin(load_ptr, job_ptr.Separate_entries)
@@ -112,7 +112,6 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 
 	keys := make([]string, 0)
 
-	// TODO check the error
 	res, err := Call("mapper_algorithm_" + job_ptr.Algorithm, stub_storage, int(job_ptr.Properties_amount), &keys,
 		job_ptr.Separate_entries, job_ptr.Separate_properties, job_ptr.Algorithm_parameters, (*load_ptr)[actual_begin:actual_end])
 	if err != nil { ErrorLoggerPtr.Fatal("Error calling mapper_algorithm:", err) }
@@ -125,6 +124,12 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 	}
 }
 
+func join_algorithm_clustering (a interface{}, b interface{}) {
+	for hidden_index, hidden_value := range b.(map[string]struct{}) {
+		a.(map[string]struct{})[hidden_index] = hidden_value
+	}
+}
+
 func prepare_and_send_job_full_goroutine(request_ptr *Request, jobs_hashmap map[string]*Job) {
 
 	InfoLoggerPtr.Println("Preparing keys", request_ptr.Body.([]string)[1:],"full jobs of task", request_ptr.Body.([]string)[0], "for server", request_ptr.Sender.Id)
@@ -134,13 +139,12 @@ func prepare_and_send_job_full_goroutine(request_ptr *Request, jobs_hashmap map[
 	for _, v := range jobs_hashmap {
 		for _, key := range request_ptr.Body.([]string)[1:] {
 			if res, ok := v.Result[key]; ok {
+
 				value, ok2 := keys_x_values[key]
 				if !ok2 {
 					keys_x_values[key] = res
 				} else {
-					for index2, value3 := range value.(map[string]struct{}) { // bad, i should pass an JOIN function instead of this for generalization.
-						keys_x_values[key].(map[string]struct{})[index2] = value3
-					}
+					join_algorithm_clustering(keys_x_values[key], value)
 				}
 			}
 		}
