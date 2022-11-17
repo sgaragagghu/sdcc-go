@@ -108,7 +108,7 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 		req.Time = time.Now()
 		go Rpc_request_goroutine(req.Receiver, req, "Mapper_handler.Get_job_full",
 			"Requesting keys " + fmt.Sprint(req.Body.([]string)[1:]) + " of task " + req.Body.([]string)[0] + " from server " + req.Receiver.Id,
-			3, EXPIRE_TIME, true, false)
+			3, EXPIRE_TIME, true)
 	}
 
 	for loop := true; loop; {
@@ -131,7 +131,7 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 			req := requests_map.Front().Value.(*Request)
 			reply := Rpc_request_goroutine(req.Receiver, req, "Mapper_handler.Are_you_alive",
 				"Waiting time expired, checking if the mapper " + req.Receiver.Id + " is alive.",
-				3, EXPIRE_TIME, true, false)
+				3, EXPIRE_TIME, true)
 
 			if reply == nil || reply.(bool) == false {
 				ErrorLoggerPtr.Fatal("Mapper", req.Receiver.Id, "doesn't answer.")

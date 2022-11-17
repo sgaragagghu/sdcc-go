@@ -149,7 +149,7 @@ func prepare_and_send_job_full_goroutine(request_ptr *Request, jobs_hashmap map[
 	req := &Request{This_server, request_ptr.Sender, 0, time.Now(), keys_x_values}
 	go Rpc_request_goroutine(req.Receiver, req, "Reducer_handler.Send_job_full",
 		"Sent job full " + request_ptr.Body.([]string)[0] + " to the reducer " + req.Receiver.Id,
-		3, EXPIRE_TIME, true, false)
+		3, EXPIRE_TIME, true)
 
 }
 
