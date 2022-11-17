@@ -124,12 +124,6 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 	}
 }
 
-func join_algorithm_clustering (a interface{}, b interface{}) {
-	for hidden_index, hidden_value := range b.(map[string]struct{}) {
-		a.(map[string]struct{})[hidden_index] = hidden_value
-	}
-}
-
 func prepare_and_send_job_full_goroutine(request_ptr *Request, jobs_hashmap map[string]*Job) {
 
 	InfoLoggerPtr.Println("Preparing keys", request_ptr.Body.([]string)[1:],"full jobs of task", request_ptr.Body.([]string)[0], "for server", request_ptr.Sender.Id)
@@ -144,7 +138,7 @@ func prepare_and_send_job_full_goroutine(request_ptr *Request, jobs_hashmap map[
 				if !ok2 {
 					keys_x_values[key] = res
 				} else {
-					join_algorithm_clustering(keys_x_values[key], value)
+					Join_algorithm_clustering(keys_x_values[key], value)
 				}
 			}
 		}

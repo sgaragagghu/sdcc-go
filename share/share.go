@@ -5,6 +5,7 @@ import (
 	"time"
 	"log"
 	"net/rpc"
+	"reflect"
 )
 
 // tech debt
@@ -84,6 +85,25 @@ func init() {
 	WarningLoggerPtr = log.New(os.Stdout, "WARNING: ", log.Ldate|log.Ltime|log.Lshortfile)
 	ErrorLoggerPtr = log.New(os.Stderr, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
 
+}
+
+func Join_algorithm_clustering (a interface{}, b interface{}) {
+	map_string_struct := reflect.TypeOf(make(map[string]struct{}))
+	slice_float64 := reflect.TypeOf(make([]float64, 0))
+
+	if (reflect.TypeOf(a) != reflect.TypeOf(b)) { ErrorLoggerPtr.Fatal("Join falied: different kind!") }
+
+	if map_string_struct == reflect.TypeOf(a) {
+		for hidden_index, hidden_value := range b.(map[string]struct{}) {
+			a.(map[string]struct{})[hidden_index] = hidden_value
+		}
+	} else if slice_float64 == reflect.TypeOf(a) {
+		for hidden_index, hidden_value := range b.([]float64) {
+			a.([]float64)[hidden_index] = hidden_value
+		}
+	} else {
+		ErrorLoggerPtr.Println("Unexpected type!")
+	}
 }
 
 func Rpc_request_goroutine(server *Server, load *Request, method string,  log_message string, retry int, delay time.Duration, error_is_fatal bool) (interface{}) {
