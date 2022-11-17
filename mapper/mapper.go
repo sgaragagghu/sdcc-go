@@ -210,10 +210,9 @@ func task_manager_goroutine() {
 				}
 			}
 
-			// TODO POBRABILE BUG QUI
 			job_light := *job_finished_ptr
 			job_light.Result = nil
-			// TODO add and manage erros
+
 			go Rpc_job_goroutine(master, &job_light, "Master_handler.Job_mapper_completed", "Completed job sent to the master.",
 				3, EXPIRE_TIME, true)
 
@@ -225,10 +224,10 @@ func task_manager_goroutine() {
 					min := -1
 					task_id_int := -1
 					var err error
-					for task_id, _ := range task_hashmap { // TODO change the hashmap with an ordered one.
+					for task_id, _ := range task_hashmap {
 						task_id_int, err = strconv.Atoi(task_id)
 						if err != nil {
-							ErrorLoggerPtr.Fatal("String to integer error:", err) // TODO consider to use a integer instead of a string.
+							ErrorLoggerPtr.Fatal("String to integer error:", err)
 						}
 						if min == -1 || min > task_id_int { min = task_id_int }
 					}
