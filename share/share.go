@@ -70,8 +70,8 @@ type Job struct {
 	Separate_entries byte
 	Separate_properties byte
 	Properties_amount int8
-	Algorithm string
-	Algorithm_parameters interface{}
+	Algorithm map[string]string
+	Algorithm_parameters map[string]interface{}
 	Result map[string]interface{}
 	Keys []string
 	Keys_x_servers map[string]map[string]*Server

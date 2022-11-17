@@ -112,7 +112,10 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 
 	keys := make([]string, 0)
 
-	res, err := Call("mapper_algorithm_" + job_ptr.Algorithm, stub_storage, int(job_ptr.Properties_amount), &keys,
+	alg, ok := job_ptr.Algorithm["map"]
+	if !ok { ErrorLoggerPtr.Println("Missing algorithm") }
+
+	res, err := Call("mapper_algorithm_" + alg, stub_storage, int(job_ptr.Properties_amount), &keys,
 		job_ptr.Separate_entries, job_ptr.Separate_properties, job_ptr.Algorithm_parameters, (*load_ptr)[actual_begin:actual_end])
 	if err != nil { ErrorLoggerPtr.Fatal("Error calling mapper_algorithm:", err) }
 	job_ptr.Result = res.(map[string]interface {})

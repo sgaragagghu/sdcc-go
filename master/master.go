@@ -611,15 +611,38 @@ func scheduler_mapper_goroutine() {
 					jobs := make([]*Job, mappers_amount)
 					{
 						var i int32 = 0
+						alg := make(map[string]string)
+						alg_par := make(map[string]interface{})
+						alg["map"] = task_ptr.Map_algorithm
+						alg["join"] = task_ptr.Join_algorithm
+						alg_par["map"] = task_ptr.Map_algorithm_parameters
+						alg_par["join"] = task_ptr.Join_algorithm_parameters
 						for ; i < mappers_amount; i += 1 {
 							begin := int64(i) * slice_size
 							end := (int64(i) + 1) * slice_size
 							if i == 0 { begin = 0 }
 							if i == mappers_amount { end = resource_size }
-							jobs[i] = &Job{strconv.FormatInt(int64(i), 10), task_ptr.Id,
-								task_ptr.Origin_id, "", task_ptr.Resource_link, begin, end, task_ptr.Margin,
-								task_ptr.Separate_entries, task_ptr.Separate_properties, task_ptr.Properties_amount,
-								task_ptr.Map_algorithm, task_ptr.Map_algorithm_parameters, nil, nil,  nil, 0, false}
+							jobs[i] = &Job{
+								Id: strconv.FormatInt(int64(i), 10),
+								Task_id: task_ptr.Id,
+								Origin_task_id: task_ptr.Origin_id,
+								Server_id: "",
+								Resource_link: task_ptr.Resource_link,
+								Begin: begin,
+								End: end,
+								Margin: task_ptr.Margin,
+								Separate_entries: task_ptr.Separate_entries,
+								Separate_properties: task_ptr.Separate_properties,
+								Properties_amount: task_ptr.Properties_amount,
+								Algorithm: alg,
+								Algorithm_parameters: alg_par,
+								Result: nil,
+								Keys: nil,
+								Keys_x_servers: nil,
+								Keys_x_servers_version: 0,
+								Delete: false,
+							}
+
 							task_ptr.Jobs[strconv.FormatInt(int64(i), 10)] = jobs[i]
 						}
 					}
@@ -1028,6 +1051,14 @@ func scheduler_reducer_goroutine() {
 					jobs := make([]*Job, reducers_amount)
 					{
 						var i int32 = 0
+
+						alg := make(map[string]string)
+						alg_par := make(map[string]interface{})
+						alg["reduce"] = task_ptr.Reduce_algorithm
+						alg["join"] = task_ptr.Join_algorithm
+						alg_par["reduce"] = task_ptr.Reduce_algorithm_parameters
+						alg_par["join"] = task_ptr.Join_algorithm_parameters
+
 						for ; i < reducers_amount; i += 1 {
 							current_slice_size := slice_size
 							if slice_rest > 0 {
@@ -1051,10 +1082,27 @@ func scheduler_reducer_goroutine() {
 								}
 							}
 
-							jobs[i] = &Job{strconv.FormatInt(int64(i), 10), task_ptr.Id,
-								task_ptr.Id, "", "", 0, 0, 0, task_ptr.Separate_entries,
-								task_ptr.Separate_properties, task_ptr.Properties_amount, task_ptr.Reduce_algorithm,
-								task_ptr.Reduce_algorithm_parameters, nil, nil, keys, 0, false}
+							jobs[i] = &Job{
+								Id: strconv.FormatInt(int64(i), 10),
+								Task_id: task_ptr.Id,
+								Origin_task_id: task_ptr.Origin_id,
+								Server_id: "",
+								Resource_link: "",
+								Begin: 0,
+								End: 0,
+								Margin: 0,
+								Separate_entries: task_ptr.Separate_entries,
+								Separate_properties: task_ptr.Separate_properties,
+								Properties_amount: task_ptr.Properties_amount,
+								Algorithm: alg,
+								Algorithm_parameters: alg_par,
+								Result: nil,
+								Keys: nil,
+								Keys_x_servers: keys,
+								Keys_x_servers_version: 0,
+								Delete: false,
+							}
+
 							task_ptr.Jobs[strconv.FormatInt(int64(i), 10)] = jobs[i]
 						}
 					}
