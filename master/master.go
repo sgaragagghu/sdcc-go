@@ -767,6 +767,12 @@ func clean_mappers_goroutine(servers_x_tasks map[string]map[string]struct{}, ser
 	}
 }
 
+func join_algorithm_clustering (a interface{}, b interface{}) {
+	for hidden_index, hidden_value := range b.([]float64) {
+		a.([]float64)[hidden_index] = hidden_value
+	}
+}
+
 func scheduler_reducer_goroutine() {
 	InfoLoggerPtr.Println("Scheduler_reducer_goroutine started.")
 
@@ -888,10 +894,8 @@ func scheduler_reducer_goroutine() {
 				_, ok := keys_x_values[key]
 				if !ok {
 					keys_x_values[key] = key_value
-				} else { // TODO hide unification algorithm... add it to the task as algorithm field...
-					for hidden_index, hidden_value := range key_value.([]float64) {
-						keys_x_values[key].([]float64)[hidden_index] = hidden_value
-					}
+				} else {
+					join_algorithm_clustering(keys_x_values[key], key_value)
 				}
 			}
 
