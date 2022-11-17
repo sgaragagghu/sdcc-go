@@ -46,6 +46,8 @@ type Task struct {
 	Reducers_amount int32 `json:"reducers_amount, omitempty"`
 	Reduce_algorithm string `json:"reduce_algorithm, omitempty"`
 	Reduce_algorithm_parameters interface{} `json:"reduce_algorithm_parameters, omitempty"`
+	Join_algorithm string `json:"join_algorithm, omitempty"`
+	Join_algorithm_parameters interface{} `json:"join_algorithm_parameters, omitempty"`
 	Iteration_algorithm string `json:"iteration_algorithm, omitempty"`
 	Iteration_algorithm_parameters interface{} `json:"iteration_algorithm_parameters, omitempty"`
 	Keys_x_servers *orderedmap.OrderedMap `json:"keys_x_servers, omitempty"`
@@ -67,6 +69,8 @@ type Task_json struct {
 	Reducers_amount int32 `json:"reducers_amount"`
 	Reduce_algorithm string `json:"reduce_algorithm"`
 	Reduce_algorithm_parameters interface{} `json:"reduce_algorithm_parameters"`
+	Join_algorithm string `json:"join_algorithm"`
+	Join_algorithm_parameters interface{} `json:"join_algorithm_parameters"`
 	Iteration_algorithm string `json:"iteration_algorithm"`
 	Iteration_algorithm_parameters interface{} `json:"iteration_algorithm_parameters"`
 }
@@ -135,6 +139,8 @@ func (h JSONServer) Send_task(r *http.Request, args *Task_json, reply *bool) err
 		Reducers_amount:args.Reducers_amount,
 		Reduce_algorithm:args.Reduce_algorithm,
 		Reduce_algorithm_parameters:args.Reduce_algorithm_parameters,
+		Join_algorithm:args.Join_algorithm,
+		Join_algorithm_parameters:args.Join_algorithm_parameters,
 		Iteration_algorithm:args.Iteration_algorithm,
 		Iteration_algorithm_parameters:args.Iteration_algorithm_parameters,
 		Keys_x_servers:orderedmap.NewOrderedMap(),

@@ -160,10 +160,31 @@ func task_injector_goroutine() {
 	iteration_parameters := make([]interface{}, 1)
 	iteration_parameters[0] =  float64(2) // max_diff (percentage)
 
-	task_ptr := &Task{"-1", "-1", 0, "https://raw.githubusercontent.com/sgaragagghu/sdcc-clustering-datasets/master/sdcc/2d-4c.csv", 2, 10,
-		'\n', ',', 2, "clustering", "clustering", parameters, 2, "clustering", nil, "clustering", iteration_parameters, orderedmap.NewOrderedMap(), 0,
-		make(map[string]*Job), make(map[string]*Job)}
-
+	task_ptr := &Task{
+		Id:"-1",
+		Origin_id:"-1",
+		Send_time:0,
+		Resource_link:"https://raw.githubusercontent.com/sgaragagghu/sdcc-clustering-datasets/master/sdcc/2d-4c.csv",
+		Mappers_amount:2,
+		Margin:10,
+		Separate_entries:'\n',
+		Separate_properties:',',
+		Properties_amount:2,
+		Initialization_algorithm:"clustering",
+		Map_algorithm:"clustering",
+		Map_algorithm_parameters:parameters,
+		Reducers_amount:2,
+		Reduce_algorithm:"clustering",
+		Reduce_algorithm_parameters:nil,
+		Join_algorithm:"clustering",
+		Join_algorithm_parameters:nil,
+		Iteration_algorithm:"clustering",
+		Iteration_algorithm_parameters:iteration_parameters,
+		Keys_x_servers:orderedmap.NewOrderedMap(),
+		Keys_x_servers_version:0,
+		Jobs:make(map[string]*Job),
+		Jobs_done:make(map[string]*Job),
+	}
 
 	err1, err2 := Call("initialization_algorithm_" + task_ptr.Initialization_algorithm, stub_storage, task_ptr)
 
@@ -172,11 +193,12 @@ func task_injector_goroutine() {
 	}
 
 
-
+/*
 	for index, index_value_o := range task_ptr.Map_algorithm_parameters.([]interface{})[1:] {
 		index_value := index_value_o.([]float64)
 		InfoLoggerPtr.Println("key", index, "value", index_value)
 	}
+*/
 
 	select {
 	case Task_mapper_channel <- task_ptr:
@@ -203,7 +225,7 @@ func task_injector_goroutine() {
 			if err1 != nil { reply = err1.(error) }
 			if err2 != nil { reply = err2 }
 
-			if reply != nil {
+			if reply == nil {
 				select {
 				case Task_mapper_channel <- task_ptr:
 					select {
@@ -462,6 +484,8 @@ func scheduler_mapper_goroutine() {
 							Reducers_amount:task_ptr.Reducers_amount,
 							Reduce_algorithm:task_ptr.Reduce_algorithm,
 							Reduce_algorithm_parameters:task_ptr.Reduce_algorithm_parameters,
+							Join_algorithm:task_ptr.Join_algorithm,
+							Join_algorithm_parameters:task_ptr.Join_algorithm_parameters,
 							Iteration_algorithm:task_ptr.Iteration_algorithm,
 							Iteration_algorithm_parameters:task_ptr.Iteration_algorithm_parameters,
 							Keys_x_servers:orderedmap.NewOrderedMap(),
@@ -694,11 +718,32 @@ func iteration_algorithm_clustering(task_ptr *Task, new_task_ptr_ptr **Task, key
 
 	if task_ptr.Origin_id == "-1" { task_ptr.Origin_id = task_ptr.Id }
 
-	*new_task_ptr_ptr = &Task{"-1", task_ptr.Origin_id, 0, task_ptr.Resource_link, task_ptr.Mappers_amount, task_ptr.Margin,
-		task_ptr.Separate_entries, task_ptr.Separate_properties, task_ptr.Properties_amount, task_ptr.Initialization_algorithm,
-		task_ptr.Map_algorithm, task_ptr.Map_algorithm_parameters, task_ptr.Reducers_amount, task_ptr.Reduce_algorithm,
-		task_ptr.Reduce_algorithm_parameters, task_ptr.Iteration_algorithm, task_ptr.Iteration_algorithm_parameters, orderedmap.NewOrderedMap(), 0,
-		make(map[string]*Job), make(map[string]*Job)}
+	*new_task_ptr_ptr = &Task{
+
+		Id:"-1",
+		Origin_id:task_ptr.Origin_id,
+		Send_time:0,
+		Resource_link:task_ptr.Resource_link,
+		Mappers_amount:task_ptr.Mappers_amount,
+		Margin:task_ptr.Margin,
+		Separate_entries:task_ptr.Separate_entries,
+		Separate_properties:task_ptr.Separate_properties,
+		Properties_amount:task_ptr.Properties_amount,
+		Initialization_algorithm:task_ptr.Initialization_algorithm,
+		Map_algorithm:task_ptr.Map_algorithm,
+		Map_algorithm_parameters:task_ptr.Map_algorithm_parameters,
+		Reducers_amount:task_ptr.Reducers_amount,
+		Reduce_algorithm:task_ptr.Reduce_algorithm,
+		Reduce_algorithm_parameters:task_ptr.Reduce_algorithm_parameters,
+		Join_algorithm:task_ptr.Join_algorithm,
+		Join_algorithm_parameters:task_ptr.Join_algorithm_parameters,
+		Iteration_algorithm:task_ptr.Iteration_algorithm,
+		Iteration_algorithm_parameters:task_ptr.Iteration_algorithm_parameters,
+		Keys_x_servers:orderedmap.NewOrderedMap(),
+		Keys_x_servers_version:0,
+		Jobs:make(map[string]*Job),
+		Jobs_done:make(map[string]*Job),
+	}
 	InfoLoggerPtr.Println("Fixpoint not found yet, new_task created")
 
 	for index, index_value_o := range task_ptr.Map_algorithm_parameters.([]interface{})[1:] {
