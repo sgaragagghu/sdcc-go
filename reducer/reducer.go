@@ -142,7 +142,7 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 	}
 	keys := make([]string, 1)
 
-	// TODO check the error
+
 	res, err := Call("reducer_algorithm_" + job_ptr.Algorithm, stub_storage, int(job_ptr.Properties_amount), keys,
 		keys_x_values, job_ptr.Separate_properties, job_ptr.Separate_entries, job_ptr.Algorithm_parameters)
 	if err != nil { ErrorLoggerPtr.Fatal("Error calling reducer_algorithm:", err) }
@@ -210,7 +210,7 @@ func task_manager_goroutine() {
 					ErrorLoggerPtr.Fatal("ready_event_channel is full.")
 				}
 			}
-			// TODO add and manage errors
+
 			go Rpc_job_goroutine(master, job_finished_ptr, "Master_handler.Job_reducer_completed",
 				"Sent completed job " + job_finished_ptr.Id + " of task " + job_finished_ptr.Task_id,
 				3, EXPIRE_TIME, true)
