@@ -345,7 +345,8 @@ func scheduler_mapper_goroutine() {
 							delete(task_ptr.Jobs_done, job_ptr.Id)
 							task_ptr.Jobs[job_ptr.Id] = job_ptr
 							for _, v := range job_ptr.Keys {
-								servers, _ := task_ptr.Keys_x_servers.Get(v) // TODO check errors
+								servers, found := task_ptr.Keys_x_servers.Get(v)
+								if !found { ErrorLoggerPtr.Fatal("Key not found.") }
 								delete(servers.(map[string]*Server), rem_mapper_ptr.Id)
 							}
 							WarningLoggerPtr.Println("Mapper", rem_mapper_ptr.Id, "disconnected, previously done job", job_ptr.Id, "task", task_ptr.Id,
@@ -365,7 +366,7 @@ func scheduler_mapper_goroutine() {
 							case job_channel <- job_ptr:
 								InfoLoggerPtr.Println("Mapper job", job_ptr.Id, "rescheduled.")
 							default:
-								ErrorLoggerPtr.Fatal("job_channel queue full") // TODO handle this case...
+								ErrorLoggerPtr.Fatal("job_channel queue full")
 							}
 						}
 					}
@@ -547,7 +548,7 @@ func scheduler_mapper_goroutine() {
 
 		case <-New_task_mapper_event_channel:
 			process_new_task := false
-			latest_task_map_el := task_hashmap.Front() // TODO check error
+			latest_task_map_el := task_hashmap.Front()
 			var latest_task_ptr *Task
 			if latest_task_map_el != nil {
 				latest_task_ptr = latest_task_map_el.Value.(*Task)
@@ -686,7 +687,8 @@ func iteration_algorithm_clustering(task_ptr *Task, new_task_ptr_ptr **Task, key
 
 	for index_string, value := range keys_x_values {
 
-		index, _ := strconv.Atoi(index_string) // TODO check error
+		index, over := strconv.Atoi(index_string)
+		if over != nil { ErrorLoggerPtr.Println("Overflow!!") }
 		task_ptr.Map_algorithm_parameters.([]interface{})[index + 1] = value.([]float64)
 	}
 
@@ -844,7 +846,7 @@ func scheduler_reducer_goroutine() {
 						case job_channel <- job_ptr:
 							InfoLoggerPtr.Println("Reduce job", job_ptr.Id, "rescheduled.")
 						default:
-							ErrorLoggerPtr.Fatal("job_channel queue full") // TODO handle this case...
+							ErrorLoggerPtr.Fatal("job_channel queue full")
 						}
 					}
 				}
@@ -921,7 +923,8 @@ func scheduler_reducer_goroutine() {
 					default:
 						ErrorLoggerPtr.Fatal("Task_reducer_completed full.")
 					}
-					task_ptr, _ := task_hashmap.Get(job_completed_ptr.Task_id) // TODO check error
+					task_ptr, found := task_hashmap.Get(job_completed_ptr.Task_id)
+					if !found { ErrorLoggerPtr.Println("Task not found") }
 					go iteration_manager(task_ptr.(*Task), keys_x_values)
 					keys_x_values = make(map[string]interface{})
 					task_hashmap.Delete(job_completed_ptr.Task_id)
