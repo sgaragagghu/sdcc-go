@@ -51,6 +51,13 @@ func heartbeat_goroutine(client *rpc.Client) {
 
 }
 
+
+func join_algorithm_clustering (a interface{}, b interface{}) {
+	for hidden_index, hidden_value := range b.(map[string]struct{}) {
+		a.(map[string]struct{})[hidden_index] = hidden_value
+	}
+}
+
 func reducer_algorithm_clustering(properties_amount int, keys []string, keys_x_values map[string]map[string]struct{},
 		separate_properties byte, separate_entries byte, parameters []interface{}) (map[string]interface{}) {
 
@@ -120,9 +127,7 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 				if !ok {
 					keys_x_values[i] = v.(map[string]struct{})
 				} else {
-					for index, value2 := range v.(map[string]struct{}) {
-						keys_x_values[i][index] = value2
-					}
+					join_algorithm_clustering(keys_x_values[i], v)
 				}
 			}
 			if requests_map.Len() == 0 { loop = false }
