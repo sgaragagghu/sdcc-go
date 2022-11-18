@@ -136,6 +136,12 @@ func prepare_and_send_job_full_goroutine(request_ptr *Request, jobs_hashmap map[
 	keys_x_values := make(map[string]interface{})
 
 	for _, v := range jobs_hashmap {
+
+		alg, ok := v.Algorithm["join"]
+		if !ok { ErrorLoggerPtr.Println("Missing algorithm") }
+		alg_par, ok := v.Algorithm_parameters["join"]
+		if !ok { ErrorLoggerPtr.Println("Missing algorithm parameter") }
+
 		for _, key := range request_ptr.Body.([]string)[1:] {
 			if res, ok := v.Result[key]; ok {
 
@@ -143,7 +149,8 @@ func prepare_and_send_job_full_goroutine(request_ptr *Request, jobs_hashmap map[
 				if !ok2 {
 					keys_x_values[key] = res
 				} else {
-					Join_algorithm_clustering(keys_x_values[key], value)
+					_, err := Call("Join_algorithm_" + alg, stub_storage, keys_x_values[key], value, alg_par)
+					if err != nil { ErrorLoggerPtr.Fatal("Error calling mapper_algorithm:", err) }
 				}
 			}
 		}
@@ -281,7 +288,7 @@ func init() {
 
 	stub_storage = map[string]interface{}{
 		"mapper_algorithm_clustering": mapper_algorithm_clustering,
-		//"funcB": funcB,
+		"Join_algorithm_clustering": Join_algorithm_clustering,
 	}
 
 	ip := GetOutboundIP().String()

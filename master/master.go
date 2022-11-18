@@ -952,12 +952,15 @@ func scheduler_reducer_goroutine() {
 				job_map[job_completed_ptr.Id] = job_completed_ptr
 			}
 
+
 			for key, key_value := range job_completed_ptr.Result {
 				_, ok := keys_x_values[key]
 				if !ok {
 					keys_x_values[key] = key_value
 				} else {
-					Join_algorithm_clustering(keys_x_values[key], key_value)
+					_, err := Call("Join_algorithm_" + task_ptr.Join_algorithm, stub_storage,
+						keys_x_values[key], key_value, task_ptr.Join_algorithm_parameters)
+					if err != nil { ErrorLoggerPtr.Fatal("Error calling mapper_algorithm:", err) }
 				}
 			}
 
@@ -1152,7 +1155,7 @@ func Master_main() {
 	stub_storage = map[string]interface{}{
 		"iteration_algorithm_clustering": iteration_algorithm_clustering,
 		"initialization_algorithm_clustering": initialization_algorithm_clustering,
-		//"funcB": funcB,
+		"Join_algorithm_clustering": Join_algorithm_clustering,
 	}
 
 	// creating channel for communicating the heartbeat

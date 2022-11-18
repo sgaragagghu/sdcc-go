@@ -111,6 +111,11 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 			3, EXPIRE_TIME, true)
 	}
 
+	alg_join, ok := job_ptr.Algorithm["join"]
+	if !ok { ErrorLoggerPtr.Println("Missing algorithm") }
+	alg_join_par, ok := job_ptr.Algorithm_parameters["join"]
+	if !ok { ErrorLoggerPtr.Println("Missing algorithm parameter") }
+
 	for loop := true; loop; {
 		select {
 			case job_full := <-Job_full_channel: // type: Request
@@ -120,7 +125,8 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 				if !ok {
 					keys_x_values[i] = v.(map[string]struct{})
 				} else {
-					Join_algorithm_clustering(keys_x_values[i], v)
+					_, err := Call("Join_algorithm_" + alg_join, stub_storage, keys_x_values[i], v, alg_join_par)
+					if err != nil { ErrorLoggerPtr.Fatal("Error calling mapper_algorithm:", err) }
 				}
 			}
 			if requests_map.Len() == 0 { loop = false }
@@ -270,7 +276,7 @@ func init() {
 
 	stub_storage = map[string]interface{}{
 		"reducer_algorithm_clustering": reducer_algorithm_clustering,
-		//"funcB": funcB,
+		"Join_algorithm_clustering": Join_algorithm_clustering,
 	}
 
 	ip := GetOutboundIP().String()

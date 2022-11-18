@@ -87,7 +87,8 @@ func init() {
 
 }
 
-func Join_algorithm_clustering (a interface{}, b interface{}) {
+func Join_algorithm_clustering (a interface{}, b interface{}, _ interface{}) {
+	// This version of Go do not implement generics.
 	map_string_struct := reflect.TypeOf(make(map[string]struct{}))
 	slice_float64 := reflect.TypeOf(make([]float64, 0))
 
