@@ -32,6 +32,7 @@ var (
 	stub_storage StubMapping
 )
 
+// Sending the heartbeat every (EXPIRE_TIME / 2) seconds
 func heartbeat_goroutine(client *rpc.Client) {
 
 	var (
@@ -51,21 +52,13 @@ func heartbeat_goroutine(client *rpc.Client) {
 
 }
 
+// Reducer "custom" method
 func reducer_algorithm_clustering(properties_amount int, keys []string, keys_x_values map[string]map[string]struct{},
 		separate_properties byte, separate_entries byte, parameters []interface{}) (map[string]interface{}) {
-
+	// res map[key]centroid
 	res := make(map[string]interface{})
-/*
-	k := parameters[0].(int)
 
-	u_vec := make([][]float64, k)
-
-	for i := range u_vec {
-		//u_vec[i] = make([]int, properties_amount)
-		u_vec[i] = parameters[i + 1].([]float64)
-	}
-*/
-
+	// keys_x_values is map[key]map[point] empty struct
 	for index, value := range keys_x_values {
 		mean := make([]float64, properties_amount)
 		var n_samples float64 = 1
@@ -73,7 +66,9 @@ func reducer_algorithm_clustering(properties_amount int, keys []string, keys_x_v
 			reader := bytes.NewReader([]byte(string_point))
 			buffered_read := bufio.NewReader(reader)
 			point := make([]float64, properties_amount)
+			// points are encoded in a string (which is the key of the internal map)
 			Parser_simple(&point, buffered_read, separate_properties, separate_entries)
+			// online mean to avoid overflow
 			mean = Welford_one_pass(mean, point, n_samples)
 			n_samples += 1
 		}
@@ -82,11 +77,14 @@ func reducer_algorithm_clustering(properties_amount int, keys []string, keys_x_v
 	return res
 }
 
+// method that takes care of completing the job
 func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
-
+	// request_map is orderedmap[server]request struct (which contains the slice of needed keys from that specific server)
 	requests_map := orderedmap.NewOrderedMap()
+	// keys_x_values is map[key]map[point] empty struct
 	keys_x_values := make(map[string]map[string]struct{})
 
+	// basically inverting keys_x_servers to servers_x_keys
 	for i, v_map := range job_ptr.Keys_x_servers {
 		for index, v := range v_map {
 			value_ptr, ok := requests_map.Get(index)
@@ -102,7 +100,7 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 
 
 	}
-
+	// for each server, asking the respective keys
 	for el := requests_map.Front(); el != nil; el = el.Next() {
 		req := el.Value.(*Request)
 		req.Time = time.Now()
@@ -116,10 +114,12 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 	alg_join_par, ok := job_ptr.Algorithm_parameters["join"]
 	if !ok { ErrorLoggerPtr.Println("Missing algorithm parameter") }
 
+	// waiting the answer from each request
 	for loop := true; loop; {
 		select {
 			case job_full := <-Job_full_channel: // type: Request
 			requests_map.Delete(job_full.Sender.Id)
+			// combining the result with the result we received previously
 			for i, v := range job_full.Body.(map[string]interface{}) {
 				_, ok := keys_x_values[i]
 				if !ok {
@@ -129,8 +129,9 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 					if err != nil { ErrorLoggerPtr.Fatal("Error calling mapper_algorithm:", err) }
 				}
 			}
+			// exit point
 			if requests_map.Len() == 0 { loop = false }
-
+		// checking if the server we are waiting the data is still working
 		case <-time.After(3 * EXPIRE_TIME * SECOND):
 			req := requests_map.Front().Value.(*Request)
 			reply := Rpc_request_goroutine(req.Receiver, req, "Mapper_handler.Are_you_alive",
@@ -151,13 +152,14 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 	if !ok { ErrorLoggerPtr.Println("Missing algorithm") }
 	alg_par, ok := job_ptr.Algorithm_parameters["reduce"]
 	if !ok { ErrorLoggerPtr.Println("Missing algorithm parameters") }
-
+	// calling the reducer function
 	res, err := Call("reducer_algorithm_" + alg, stub_storage, int(job_ptr.Properties_amount), keys,
 		keys_x_values, job_ptr.Separate_properties, job_ptr.Separate_entries, alg_par)
 	if err != nil { ErrorLoggerPtr.Fatal("Error calling reducer_algorithm:", err) }
 	job_ptr.Result = res.(map[string]interface {})
 	job_ptr.Keys = keys
 	select {
+	// notify the sceduler that the join has been completed
 	case *chan_ptr <- job_ptr:
 	default:
 		ErrorLoggerPtr.Fatal("Finished job channel full.")
@@ -167,6 +169,7 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 func task_manager_goroutine() {
 
 	state := IDLE
+	// map[task]list of jobs
 	task_hashmap := make(map[string]*list.List)
 	//task_finished_hashmap := orderedmap.NewOrderedMap()
 	ready_event_channel := make(chan struct{}, 1000)
@@ -176,6 +179,7 @@ func task_manager_goroutine() {
 
 	for {
 		select {
+		// new job received
 		case job_ptr := <-Job_reducer_channel:
 			InfoLoggerPtr.Println("Received Task", job_ptr.Task_id, "job", job_ptr.Id, ".")
 
@@ -189,15 +193,17 @@ func task_manager_goroutine() {
 			}
 
 			if state == IDLE {
+				// run the next job, if any
 				select {
 				case ready_event_channel <- struct{}{}:
 				default:
 					ErrorLoggerPtr.Fatal("ready_event_channel is full.")
 				}
 			}
-
+		// job has been completed, just updating the data structures
 		case job_finished_ptr := <-*job_finished_channel_ptr:
 			InfoLoggerPtr.Println("Job", job_finished_ptr.Id, "of task", job_finished_ptr.Task_id, "is finished.")
+			// moving the job to the variable containing the completed ones
 			if job_list_ptr, ok := task_hashmap[job_finished_ptr.Task_id]; ok {
 				job_list_ptr.Remove(job_list_ptr.Front())
 				if job_list_ptr.Len() == 0 { delete (task_hashmap, job_finished_ptr.Task_id) }
@@ -212,6 +218,9 @@ func task_manager_goroutine() {
 				job_map.(map[string]*Job)[job_finished_ptr.Id] = job_finished_ptr
 			}
 			*/
+
+
+			// run the next job, if any
 			if len(task_hashmap) > 0 {
 				select{
 				case ready_event_channel <- struct{}{}:
@@ -225,10 +234,11 @@ func task_manager_goroutine() {
 				3, EXPIRE_TIME, true)
 
 			state = IDLE
-
+		// run the next job, if any
 		case <-ready_event_channel:
 			if state == IDLE {
 				if len(task_hashmap) > 0 {
+					// Serving the oldest task's job
 					min := -1
 					task_id_int := -1
 					var err error
@@ -269,20 +279,20 @@ func task_manager_goroutine() {
 }
 
 func init() {
-
+	// registering types for interface{}
 	gob.Register([]interface{}(nil))
 	gob.Register(map[string]interface{}(nil))
 	gob.Register(map[string]struct{}(nil))
-
+	// data structure for calling functions by its name in a string
 	stub_storage = map[string]interface{}{
 		"reducer_algorithm_clustering": reducer_algorithm_clustering,
 		"Join_algorithm_clustering": Join_algorithm_clustering,
 	}
-
+	// geting our IP
 	ip := GetOutboundIP().String()
 	var id string
-
-	id = ip + MAPPER_PORT + APP_ID + strconv.FormatInt(time.Now().Unix(), 10)
+	// getting reducer ID
+	id = ip + REDUCER_PORT + APP_ID + strconv.FormatInt(time.Now().Unix(), 10)
 	id = fmt.Sprintf("%x", sha256.Sum256([]byte(id)))
 
 	if id == "" {
@@ -345,4 +355,3 @@ func Reducer_main() {
 		go rpc.ServeConn(conn)
 	}
 }
-

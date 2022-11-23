@@ -29,7 +29,7 @@ var (
 	stub_storage StubMapping
 )
 
-// Sending the heartbeat every (EXPIRE_TIME / 2) seconds 
+// Sending the heartbeat every (EXPIRE_TIME / 2) seconds
 func heartbeat_goroutine(client *rpc.Client) {
 
 	var (
@@ -88,7 +88,7 @@ func mapper_algorithm_clustering(properties_amount int, keys *[]string, separate
 				min = distance
 			}
 		}
-		
+
 		min_index_s := strconv.Itoa(min_index)
 		// combining
 		if m, ok := res[min_index_s]; ok {
@@ -128,7 +128,7 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 	if !ok { ErrorLoggerPtr.Println("Missing algorithm") }
 	alg_par, ok := job_ptr.Algorithm_parameters["map"]
 	if !ok { ErrorLoggerPtr.Println("Missing algorithm parameter") }
-	// classing the map method
+	// calling the map method
 	res, err := Call("mapper_algorithm_" + alg, stub_storage, int(job_ptr.Properties_amount), &keys,
 		job_ptr.Separate_entries, job_ptr.Separate_properties, alg_par, (*load_ptr)[actual_begin:actual_end])
 	if err != nil { ErrorLoggerPtr.Fatal("Error calling mapper_algorithm:", err) }
@@ -191,7 +191,7 @@ func task_manager_goroutine() {
 	next_check_task := ""
 	// task ready to be deleted
 	to_delete_tasks := make(map[string]string)
-	
+
 	for {
 		select {
 		// new job received
@@ -318,7 +318,7 @@ func init() {
 		"Join_algorithm_clustering": Join_algorithm_clustering,
 	}
 
-	// ggeting our IP
+	// geting our IP
 	ip := GetOutboundIP().String()
 	var id string
 
@@ -404,4 +404,3 @@ func Mapper_main() {
 		go rpc.ServeConn(conn)
 	}
 }
-
