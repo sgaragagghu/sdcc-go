@@ -87,39 +87,39 @@ type Task_result struct {
 
 // create a type to get an interface
 type Master_handler int
-
+// Used by mappers and reducers to send heartbeats
 func (h Master_handler) Send_heartbeat(args *Server, reply *int) error {
 	Heartbeat_channel <- args
 	return nil
 }
-
+// Used by mappers to notify (keys included) that the job has been completed
 func (h Master_handler) Job_mapper_completed(args *Job, reply *int) error {
 	Job_mapper_completed_channel <- args
 	return nil
 }
-
+// Used by the reducer to notify (result included) that the job has been completed
 func (h Master_handler) Job_reducer_completed(args *Job, reply *int) error {
 	Job_reducer_completed_channel <- args
 	return nil
 }
-
 // create a type to get an interface for JSONRPC
 type JSONServer struct{}
-
+// Used by user or frontend to get the information about the status of the system (task, mapper and reducer amount)
 func (h JSONServer) Get_status(r *http.Request, _ *struct{}, reply *Status) error {
 	stat := *Status_ptr
 	reply = &stat
+
 	/*
 	full_bytes, err := json_parse.Marshal(stat)
 	full_string := string(full_bytes)
 	reply = full_string
 	if err != nil {
 		ErrorLoggerPtr.Println("Get_status failed",  err)
-	}
-*/
+	}*/
+
 	return nil
 }
-
+// Used by the user or frontend to send a new task
 func (h JSONServer) Send_task(r *http.Request, args *Task_json, reply *bool) error {
 
 	task_ptr := &Task{
@@ -168,7 +168,7 @@ func (h JSONServer) Send_task(r *http.Request, args *Task_json, reply *bool) err
 	return err
 }
 
-
+// Used by the user of frontend to get the latest results
 func (h JSONServer) Get_results(r *http.Request, _ *struct{}, reply *[]Task_result) error {
 
 

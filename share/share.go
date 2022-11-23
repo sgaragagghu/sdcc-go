@@ -59,23 +59,23 @@ type Server struct {
 }
 
 type Job struct {
-	Id string
-	Task_id string
-	Origin_task_id string
-	Server_id string
-	Resource_link string
-	Begin int64
-	End int64
-	Margin int8
-	Separate_entries byte
-	Separate_properties byte
-	Properties_amount int8
-	Algorithm map[string]string
-	Algorithm_parameters map[string]interface{}
+	Id string // job id
+	Task_id string // task id
+	Origin_task_id string // task id of the first iteration
+	Server_id string // server id
+	Resource_link string // it is supposed that we are using an http resource link 
+	Begin int64 // start of the assigned slice
+	End int64 // end of the assigned slice
+	Margin int8 // mapper doesn't download exactly its assigned slice but a bit more, it is explained in the mapper source code
+	Separate_entries byte // (parser) character placed between entries
+	Separate_properties byte // (parser) character placed between properties
+	Properties_amount int8 // amount of properties for each entries (eg. each cartesian plane's point has 2 properties)
+	Algorithm map[string]string // various algorithm that can be helpful to the job
+	Algorithm_parameters map[string]interface{} // same but for prameters
 	Result map[string]interface{}
 	Keys []string
-	Keys_x_servers map[string]map[string]*Server
-	Keys_x_servers_version int8
+	Keys_x_servers map[string]map[string]*Server // amount of properties for each entries (eg. each cartesian plane's point has 2 properties)
+	Keys_x_servers_version int8 // if a mapper crashes then probably we have to modify the previous variable and then increment this
 	Delete bool
 }
 
@@ -86,7 +86,7 @@ func init() {
 	ErrorLoggerPtr = log.New(os.Stderr, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
 
 }
-
+// custom function for combining keys values
 func Join_algorithm_clustering (a interface{}, b interface{}, _ interface{}) {
 	// This version of Go do not implement generics.
 	map_string_struct := reflect.TypeOf(make(map[string]struct{}))
@@ -106,7 +106,7 @@ func Join_algorithm_clustering (a interface{}, b interface{}, _ interface{}) {
 		ErrorLoggerPtr.Println("Unexpected type!")
 	}
 }
-
+// connect to the rpc server and call the remote method "method" and paremeters "load" (type request)
 func Rpc_request_goroutine(server *Server, load *Request, method string,  log_message string, retry int, delay time.Duration, error_is_fatal bool) (interface{}) {
 
 	// connect to server via rpc tcp
@@ -158,7 +158,7 @@ func Rpc_request_goroutine(server *Server, load *Request, method string,  log_me
 	return reply
 }
 
-
+// connect to the rpc server and call the remote method "method" and paremeters "load" (type Job)
 func Rpc_job_goroutine(server *Server, load *Job, method string, log_message string, retry int, delay time.Duration, error_is_fatal bool) (interface{}) {
 	// connect to mapper via rpc tcp
 	var client *rpc.Client

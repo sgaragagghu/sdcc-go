@@ -21,6 +21,7 @@ var MaxInt int64
 const BYTE_SIZE = 8
 
 func init() {
+	// Retrieving max int number, for checking overflows
 	var try int = 0
 	bit := unsafe.Sizeof(try) * BYTE_SIZE
 	MaxInt =  1<<(bit - 1) - 1
@@ -39,7 +40,7 @@ func Check_float64_to_int_overflow(a float64) (bool) {
 	}
 	return false
 }
-
+// Get first n (count) words of a string)
 func First_words(value string, count int) string {
 	// Loop over all indexes in the string.
 	for i := range value {
@@ -55,7 +56,7 @@ func First_words(value string, count int) string {
 	// Return the entire string.
 	return value
 }
-
+// Just simple parser forr comma separated values kind of files
 func Parser_simple(point *[]float64, buffered_read *bufio.Reader, separate_properties byte, separate_entries byte) (full_s string, err error) {
 
 	s := ""
@@ -63,26 +64,26 @@ func Parser_simple(point *[]float64, buffered_read *bufio.Reader, separate_prope
 	var char byte
 	for char, err = buffered_read.ReadByte(); err == nil; char, err = buffered_read.ReadByte() {
 		//InfoLoggerPtr.Println(string(char))
-		if char == separate_properties {
+		if char == separate_properties { // found a property
 			if j < len(*point)  {
 				(*point)[j - 1], _ = strconv.ParseFloat(s, 64) //TODO check the error
 				full_s = s + string(separate_properties)
-				s = ""
+				s = "" //resetting the string since we have to append the next property value
 				j += 1
 			} else { ErrorLoggerPtr.Fatal("Parsing failed") }
-		} else if char == separate_entries {
+		} else if char == separate_entries { // entry has finished, retrieving the last property of the entry
 			if j == len(*point) {
 				(*point)[j - 1], _ = strconv.ParseFloat(s, 64) // TODO check the error
 				full_s += s + string(separate_entries)
 				break
 			} else { ErrorLoggerPtr.Fatal("Parsing failed") }
 		} else {
-			s += string(char) // TODO Try to use a buffer like bytes.NewBufferString(ret) for better performances
+			s += string(char)
 		}
 	}
 	return full_s, err
 }
-
+// Searching the first entry
 func Get_actual_begin(load_ptr *[]byte, separate_entries byte) (int64, error) {
 	reader := bytes.NewReader(*load_ptr)
 	buffered_read := bufio.NewReader(reader)
@@ -90,6 +91,7 @@ func Get_actual_begin(load_ptr *[]byte, separate_entries byte) (int64, error) {
 	var i int64 = 0
 	// TODO, see the next function
 	for char, err := buffered_read.ReadByte(); err == nil && found == false; char, err = buffered_read.ReadByte() {
+		// Just searching the character
 		if char == separate_entries { found = true }
 		i += 1
 	}
@@ -97,13 +99,12 @@ func Get_actual_begin(load_ptr *[]byte, separate_entries byte) (int64, error) {
 		return i, nil
 	} else { return i, errors.New("Separate entries not found") }
 }
-
+// Searching the last entry, that is the first entry after the offset (length of the slice)
 func Get_actual_end(load_ptr *[]byte, separate_entries byte, offset int64) (int64, error) {
 	reader := bytes.NewReader((*load_ptr)[offset - 1:]) //TODO check error
 	buffered_read := bufio.NewReader(reader)
 	found := false
 	var i int64 = -1
-	// TODO check if the buffer the fox stopped cause the buffer is empty but not the byte array
 	for char, err := buffered_read.ReadByte(); err == nil; char, err = buffered_read.ReadByte() { // TODO check the error if != EOF
 		if char == separate_entries {
 			found = true
@@ -116,6 +117,7 @@ func Get_actual_end(load_ptr *[]byte, separate_entries byte, offset int64) (int6
 	} else { return offset + i, errors.New("Separate entries not found") }
 }
 
+// Online mean
 func Welford_one_pass(mean []float64, sample []float64, nsamples float64) ([]float64) {
 	if(nsamples > 0) {
 		for i, _ := range mean {
@@ -147,8 +149,7 @@ func GetOutboundIP() net.IP {
 
     return localAddr.IP
 }
-
-// TODO check generics
+// This version of go doesn't support generics
 func MinOf_int32(vars ...int32) int32 {
     min := vars[0]
 
@@ -160,7 +161,7 @@ func MinOf_int32(vars ...int32) int32 {
 
     return min
 }
-
+// Following function's auxiliary function to check compatibility between parameters
 func compatible(actual, expected reflect.Type) bool {
 	if actual == nil {
 		k := expected.Kind()
@@ -174,6 +175,7 @@ func compatible(actual, expected reflect.Type) bool {
 	return actual.AssignableTo(expected)
 }
 
+// Function for calling a function by its name
 func Call(funcName string, stub_storage StubMapping, params ... interface{}) (result interface{}, err error) {
 	f := reflect.ValueOf(stub_storage[funcName])
 	funcType := reflect.TypeOf(stub_storage[funcName])
@@ -190,7 +192,7 @@ func Call(funcName string, stub_storage StubMapping, params ... interface{}) (re
 			err = fmt.Errorf("InvocationCausedPanic called with a mismatched parameter type [parameter #%v: expected %v; got %v].", k, expectedType, actualType)
 			return
 		}
-
+		// if a parameter is nil then reflect can't understand its kind so we must manually create the expected element
 		if param == nil {
 			in[k] = reflect.New(expectedType).Elem()
 		} else {
@@ -231,13 +233,13 @@ func Get_file_size(url string) (int64) {
 	return downloadSize
 
  }
-
+// Download a slice of an http resource
  func Http_download(resource string, begin int64, end int64) (*[]byte) {
 	 req, _ := http.NewRequest("GET", resource, nil)
 	 req.Header.Add("Range", "bytes=" +  strconv.FormatInt(begin, 10) + "-" + strconv.FormatInt(end, 10))
 	 //fmt.Println(req)
 	 var client http.Client
-	 resp, _ := client.Do(req) // TODO download to local file
+	 resp, _ := client.Do(req)
 	 //fmt.Println(resp)
 	 body, _ := ioutil.ReadAll(resp.Body) // TODO check the error
 	 //fmt.Println(len(body))
