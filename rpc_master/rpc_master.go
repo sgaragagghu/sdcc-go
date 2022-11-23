@@ -29,33 +29,32 @@ var (
 )
 
 type Task struct {
-	Id string `json:"id, omitempty"`
-	Origin_id string `json:"origin_id, omitempty"`
-	Send_time int64 `json:"send_time, omitempty"`
-	Resource_link string `json:"resource_link, omitempty"`
-	Mappers_amount int32 `json:"mappers_amount, omitempty"`
-	Margin int8 `json:"margin, omitempty"`
-	Separate_entries byte `json:"separate_entries, omitempty"`
-	Separate_properties byte `json:"separate_properties, omitempty"`
-	Properties_amount int8 `json:"properties_amount, omitempty"`
-	Initialization_algorithm string `json:"initialization_algorithm, omitempty"`
-	Map_algorithm string `json:"map_algorithm, omitempty"`
-	Map_algorithm_parameters interface{} `json:"map_algorithm_parameters, omitempty"`
-//	Shuffle_algorithm string
-//	Order_algorithm string
-	Reducers_amount int32 `json:"reducers_amount, omitempty"`
-	Reduce_algorithm string `json:"reduce_algorithm, omitempty"`
-	Reduce_algorithm_parameters interface{} `json:"reduce_algorithm_parameters, omitempty"`
-	Join_algorithm string `json:"join_algorithm, omitempty"`
-	Join_algorithm_parameters interface{} `json:"join_algorithm_parameters, omitempty"`
-	Iteration_algorithm string `json:"iteration_algorithm, omitempty"`
-	Iteration_algorithm_parameters interface{} `json:"iteration_algorithm_parameters, omitempty"`
-	Keys_x_servers *orderedmap.OrderedMap `json:"keys_x_servers, omitempty"`
-	Keys_x_servers_version int8 `json:"keys_x_servers, omitempty"`
-	Jobs map[string]*Job `json:"jobs, omitempty"`
-	Jobs_done map[string]*Job `json:"mapper_amount, omitempty"`
+	Id string // task id
+	Origin_id string // task id of the first iteration
+	Send_time int64 // send time
+	Resource_link string // it is supposed that we are using an http resource link
+	Mappers_amount int32 // maximum amount of mappers to be used
+	Margin int8 // mapper doesn't download exactly its assigned slice but a bit more, it is explained in the mapper source code
+	Separate_entries byte // (parser) character placed between entries
+	Separate_properties byte // (parser) character placed between properties
+	Properties_amount int8 // amount of properties for each entries (eg. each cartesian plane's point has 2 properties)
+	Initialization_algorithm string // name of the initialization algorithm
+	Map_algorithm string // name of the map algorithm
+	Map_algorithm_parameters interface{}
+	Reducers_amount int32 // maximum amount of reducers to be used
+	Reduce_algorithm string // name of the reduce algorithm
+	Reduce_algorithm_parameters interface{}
+	Join_algorithm string // name of the join algorithm
+	Join_algorithm_parameters interface{}
+	Iteration_algorithm string // name of the iteration algorithm
+	Iteration_algorithm_parameters interface{}
+	Keys_x_servers *orderedmap.OrderedMap // tracking where are located the results of such keys
+	Keys_x_servers_version int8 // if a mapper crashes then probably we have to modify the previous variable and then increment this
+	Jobs map[string]*Job // list of to-do jobs
+	Jobs_done map[string]*Job // list of completed jobs
 }
 
+// struct that is "json" friendly
 type Task_json struct {
 	Resource_link string `json:"resource_link"`
 	Mappers_amount int32 `json:"mappers_amount"`
