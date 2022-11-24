@@ -26,6 +26,7 @@ import (
 
 var (
 	master *Server
+	// data structure for calling functions by its name in a string
 	stub_storage StubMapping
 )
 
