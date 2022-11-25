@@ -44,7 +44,7 @@ func heartbeat_goroutine(client *rpc.Client) {
 		if err != nil {
 			ErrorLoggerPtr.Fatal("Heartbeat error:", err)
 		}
-		InfoLoggerPtr.Println("Heartbeat sent.")
+		//InfoLoggerPtr.Println("Heartbeat sent.")
 		time.Sleep(EXPIRE_TIME * SECOND / 2)
 	}
 

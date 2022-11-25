@@ -1084,7 +1084,7 @@ func scheduler_reducer_goroutine() {
 					if task_ptr.Keys_x_servers.Len() > math.MaxInt32 { ErrorLoggerPtr.Println("Overflow!!") }
 					keys_amount := int32(task_ptr.Keys_x_servers.Len())
 					if len(idle_reducer_hashmap) > math.MaxInt32 { ErrorLoggerPtr.Println("Overflow!!") }
-					reducers_amount := MinOf_int32(task_ptr.Reducers_amount, int32(len(idle_reducer_hashmap)))
+					reducers_amount := MinOf_int32(task_ptr.Reducers_amount, int32(len(idle_reducer_hashmap)), int32(task_ptr.Keys_x_servers.Len()))
 					slice_size := 1
 					if reducers_amount == 0 { reducers_amount = 1 }
 					var slice_reminder int32 = 0
@@ -1099,7 +1099,9 @@ func scheduler_reducer_goroutine() {
 					if reducers_amount == 0 { reducers_amount = 1 }
 
 					jobs := make([]*Job, reducers_amount)
+					el := task_ptr.Keys_x_servers.Front()
 					{
+						//InfoLoggerPtr.Println("slice size:", slice_size, "reminder:", slice_reminder)
 						var i int32 = 0
 
 						alg := make(map[string]string)
@@ -1120,11 +1122,11 @@ func scheduler_reducer_goroutine() {
 							keys := make(map[string]map[string]*Server)
 							{
 								j := 0
-								el := task_ptr.Keys_x_servers.Front()
 								//InfoLoggerPtr.Println("size", current_slice_size)
-								for ; j < current_slice_size || el != nil; j += 1 {
+								for ; j < current_slice_size && el != nil; j += 1 {
 									value := el.Value.(map[string]*Server)
 									keys[el.Key.(string)] = value
+									InfoLoggerPtr.Println("key added ", el.Key.(string))
 									el = el.Next()
 								}
 								if j < current_slice_size && el == nil {
