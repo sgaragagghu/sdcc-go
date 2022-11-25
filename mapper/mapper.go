@@ -299,7 +299,7 @@ func task_manager_goroutine() {
 						if _, ok := to_delete_tasks[value.Task_id]; ok { delete(job_map_ptr, key) }
 					}
 					if len(job_map_ptr) == 0 { task_finished_hashmap.Delete(checking_task) }
-				} else { ErrorLoggerPtr.Fatal("Task is missing") }
+				} else { ErrorLoggerPtr.Fatal("Task", next_check_task,"is missing") }
 			}
 		}
 	}
