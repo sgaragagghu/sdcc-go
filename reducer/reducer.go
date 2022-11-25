@@ -4,7 +4,7 @@ import (
 	. "../share"
 	. "../rpc_reducer"
 	. "../rpc_master"
-	. "../rpc_mapper"
+	//. "../rpc_mapper"
 	"fmt"
 	//"os"
 	//"io/ioutil"
@@ -305,10 +305,11 @@ func init() {
 }
 
 func Reducer_main() {
-
+	var client *rpc.Client
+	var err error
 	for {
 		// connect to server via rpc tcp
-		client, err := rpc.Dial("tcp", MASTER_IP + ":" + MASTER_PORT)
+		client, err = rpc.Dial("tcp", MASTER_IP + ":" + MASTER_PORT)
 		defer client.Close()
 		if err != nil {
 			WarningLoggerPtr.Println(err)

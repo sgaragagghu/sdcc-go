@@ -10,7 +10,7 @@ import (
 	//"net/rpc/jsonrpc"
 	"reflect"
 	"time"
-	//"encoding/gob"
+	"encoding/gob"
 	//"container/list"
 	"math"
 	"math/rand"
