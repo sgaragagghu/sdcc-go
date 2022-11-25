@@ -306,11 +306,14 @@ func init() {
 
 func Reducer_main() {
 
-	// connect to server via rpc tcp
-	client, err := rpc.Dial("tcp", MASTER_IP + ":" + MASTER_PORT)
-	defer client.Close()
-	if err != nil {
-		ErrorLoggerPtr.Fatal(err)
+	for {
+		// connect to server via rpc tcp
+		client, err := rpc.Dial("tcp", MASTER_IP + ":" + MASTER_PORT)
+		defer client.Close()
+		if err != nil {
+			WarningLoggerPtr.Println(err)
+			time.Sleep( (EXPIRE_TIME / 2) * SECOND )
+		}
 	}
 
 	// creating channel for communicating the task
