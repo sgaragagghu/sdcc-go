@@ -149,8 +149,10 @@ func Rpc_request_goroutine(server *Server, load *Request, method string,  log_me
 		} else {
 			ErrorLoggerPtr.Println(method, "error", err)
 		}
+	} else {
+		client.Close()
+		InfoLoggerPtr.Println(log_message)
 	}
-	InfoLoggerPtr.Println(log_message)
 	return reply
 }
 
@@ -168,7 +170,6 @@ func Rpc_job_goroutine(server *Server, load *Job, method string, log_message str
 			time.Sleep(delay * SECOND)
 		}
 	}
-	defer client.Close()
 	if err != nil {
 		if error_is_fatal {
 			ErrorLoggerPtr.Fatal(err)
@@ -195,8 +196,10 @@ func Rpc_job_goroutine(server *Server, load *Job, method string, log_message str
 		} else {
 			ErrorLoggerPtr.Println(method, "error", err)
 		}
+	} else {
+		client.Close()
+		InfoLoggerPtr.Println(log_message)
 	}
-	InfoLoggerPtr.Println(log_message)
 	return reply
 }
 

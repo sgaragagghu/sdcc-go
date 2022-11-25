@@ -1126,7 +1126,7 @@ func scheduler_reducer_goroutine() {
 								for ; j < current_slice_size && el != nil; j += 1 {
 									value := el.Value.(map[string]*Server)
 									keys[el.Key.(string)] = value
-									InfoLoggerPtr.Println("key added ", el.Key.(string))
+									//InfoLoggerPtr.Println("key added ", el.Key.(string))
 									el = el.Next()
 								}
 								if j < current_slice_size && el == nil {

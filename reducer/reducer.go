@@ -135,14 +135,16 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 		// checking if the server we are waiting the data is still working
 		case <-time.After(3 * EXPIRE_TIME * SECOND):
 			req := requests_map.Front().Value.(*Request)
-			reply := Rpc_request_goroutine(req.Receiver, req, "Mapper_handler.Are_you_alive",
-				"Waiting time expired, checking if the mapper " + req.Receiver.Id + " is alive.",
-				3, EXPIRE_TIME, true)
+			{
+				reply := Rpc_request_goroutine(req.Receiver, req, "Mapper_handler.Are_you_alive",
+					"Waiting time expired, checking if the mapper " + req.Receiver.Id + " is alive.",
+					3, EXPIRE_TIME, true)
 
-			if reply == nil || reply.(bool) == false {
-				ErrorLoggerPtr.Fatal("Mapper", req.Receiver.Id, "doesn't answer.")
-			} else {
-				InfoLoggerPtr.Println("Mapper", req.Receiver.Id, "still alive.")
+				if reply == nil || reply.(bool) == false {
+					ErrorLoggerPtr.Fatal("Mapper", req.Receiver.Id, "doesn't answer.")
+				} else {
+					InfoLoggerPtr.Println("Mapper", req.Receiver.Id, "still alive.")
+				}
 			}
 		}
 	}
