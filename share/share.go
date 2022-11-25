@@ -87,7 +87,7 @@ func init() {
 
 }
 // custom function for combining keys values
-func Join_algorithm_clustering (a interface{}, b interface{}, _ interface{}) {
+func Join_algorithm_clustering (a interface{}, b interface{}, _ interface{}) (ret struct{}) {
 	// This version of Go do not implement generics.
 	map_string_struct := reflect.TypeOf(make(map[string]struct{}))
 	slice_float64 := reflect.TypeOf(make([]float64, 0))
@@ -105,6 +105,7 @@ func Join_algorithm_clustering (a interface{}, b interface{}, _ interface{}) {
 	} else {
 		ErrorLoggerPtr.Println("Unexpected type!")
 	}
+	return
 }
 // connect to the rpc server and call the remote method "method" and paremeters "load" (type request)
 func Rpc_request_goroutine(server *Server, load *Request, method string,  log_message string, retry int, delay time.Duration, error_is_fatal bool) (interface{}) {
@@ -185,11 +186,6 @@ func Rpc_job_goroutine(server *Server, load *Job, method string, log_message str
 
 	for ; retry > 0; retry -= 1 {
 		err = client.Call(method, load, &reply)
-
-		if &reply != nil {
-			err = nil
-			break
-		}
 
 		if err == nil {
 			break
