@@ -21,7 +21,7 @@ var (
 // create a type to get an interface
 type Mapper_handler int
 // Used by the master ti send jobs to the mapper
-func (h Mapper_handler) Send_job(args *Job, reply *int) error {
+func (h Mapper_handler) Send_job(args *Job, reply *interface{}) error {
 	Job_channel <- args
 	return nil
 }

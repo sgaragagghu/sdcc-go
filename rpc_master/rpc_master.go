@@ -88,17 +88,17 @@ type Task_result struct {
 // create a type to get an interface
 type Master_handler int
 // Used by mappers and reducers to send heartbeats
-func (h Master_handler) Send_heartbeat(args *Server, reply *int) error {
+func (h Master_handler) Send_heartbeat(args *Server, reply *interface{}) error {
 	Heartbeat_channel <- args
 	return nil
 }
 // Used by mappers to notify (keys included) that the job has been completed
-func (h Master_handler) Job_mapper_completed(args *Job, reply *int) error {
+func (h Master_handler) Job_mapper_completed(args *Job, reply *interface{}) error {
 	Job_mapper_completed_channel <- args
 	return nil
 }
 // Used by the reducer to notify (result included) that the job has been completed
-func (h Master_handler) Job_reducer_completed(args *Job, reply *int) error {
+func (h Master_handler) Job_reducer_completed(args *Job, reply *interface{}) error {
 	Job_reducer_completed_channel <- args
 	return nil
 }

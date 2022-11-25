@@ -16,7 +16,7 @@ var (
 // create a type to get an interface
 type Reducer_handler int
 // Used by the master to send jobs to the reducer
-func (h Reducer_handler) Send_job(args *Job, reply *int) error {
+func (h Reducer_handler) Send_job(args *Job, reply *interface{}) error {
 	Job_reducer_channel <- args
 	return nil
 }
