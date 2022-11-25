@@ -88,7 +88,7 @@ type Task_result struct {
 // create a type to get an interface
 type Master_handler int
 // Used by mappers and reducers to send heartbeats
-func (h Master_handler) Send_heartbeat(args *Server, reply *interface{}) error {
+func (h Master_handler) Send_heartbeat(args *Server, reply *int) error {
 	Heartbeat_channel <- args
 	return nil
 }
