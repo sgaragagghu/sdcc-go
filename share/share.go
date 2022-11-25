@@ -136,11 +136,6 @@ func Rpc_request_goroutine(server *Server, load *Request, method string,  log_me
 	for ; retry > 0; retry -= 1 {
 		err = client.Call(method, load, &reply)
 
-		if &reply != nil {
-			err = nil
-			break
-		}
-
 		if err == nil {
 			break
 		} else {

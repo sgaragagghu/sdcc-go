@@ -5,6 +5,7 @@ import (
 //	"time"
 //	. "../rpc_master"
 //	"container/list"
+//	"fmt"
 )
 
 const MAPPER_PORT = "6668"
@@ -25,7 +26,7 @@ func (h Mapper_handler) Send_job(args *Job, reply *int) error {
 	return nil
 }
 // Used by the master to notify that a task has been fully completed and its data can be deleted
-func (h Mapper_handler) Task_completed(args *Request, reply *struct{}) error {
+func (h Mapper_handler) Task_completed(args *Request, reply *interface{}) error {
 	Task_completed_channel <- args.Body.(map[string]struct{})
 	return nil
 }
