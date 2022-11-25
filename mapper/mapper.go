@@ -287,6 +287,11 @@ func task_manager_goroutine() {
 				if el := task_finished_hashmap.GetElement(next_check_task); el != nil {
 					job_map_ptr := el.Value.(map[string]*Job)
 					checking_task := next_check_task
+					for key, value := range job_map_ptr {
+						//if value.Delete { delete(job_map_ptr, key) }
+						if _, ok := to_delete_tasks[value.Task_id]; ok { delete(job_map_ptr, key) }
+					}
+					if len(job_map_ptr) == 0 { task_finished_hashmap.Delete(checking_task) }
 					if el = el.Next(); el != nil {
 						next_check_task = el.Key.(string)
 					} else if el = task_finished_hashmap.Front(); el != nil {
@@ -294,12 +299,7 @@ func task_manager_goroutine() {
 					} else {
 						next_check_task = ""
 					}
-					for key, value := range job_map_ptr {
-						//if value.Delete { delete(job_map_ptr, key) }
-						if _, ok := to_delete_tasks[value.Task_id]; ok { delete(job_map_ptr, key) }
-					}
-					if len(job_map_ptr) == 0 { task_finished_hashmap.Delete(checking_task) }
-				} else { ErrorLoggerPtr.Fatal("Task", next_check_task,"is missing") }
+				} else { ErrorLoggerPtr.Fatal("Task ", next_check_task," is missing") }
 			}
 		}
 	}
