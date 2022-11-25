@@ -362,11 +362,8 @@ func scheduler_mapper_goroutine() {
 			// data structure to store the new keys_x_servers variable
 			probable_reducer_task_error := make(map[string]struct{})
 			for el := task_hashmap.Back(); el != nil; el = el.Prev() { // checking each task for jobs that have to be rescheduled (there are maximum 2 tasks)
-				// TODO there are four useless lines here to be cleaned
 				current_task_ptr := el.Value.(*Task).Id
-				task_ptr_o, task_present := task_hashmap.Get(current_task_ptr)
-				if !task_present { break }
-				task_ptr := task_ptr_o.(*Task)
+				task_ptr := el.Value.(*Task)
 				jobs := servers_x_tasks_x_jobs[rem_mapper_ptr.Id][current_task_ptr]
 				for i := 0; i < 2; i += 1 { // 2 rounds, one for the to-do jobs and one for the done jobs
 					for _, job_ptr := range jobs {
@@ -482,7 +479,7 @@ func scheduler_mapper_goroutine() {
 					}
 					loop = false
 				}
-
+				// the task has been completed
 				if len(task_ptr.Jobs) == 0 {
 					if task_ptr.Send_time == 0 { // if the task has not been sent to the reducer phase already
 						InfoLoggerPtr.Println("Task mapper completed, job", job_completed_ptr.Id, "task", job_completed_ptr.Task_id, ".")
@@ -1029,8 +1026,7 @@ func scheduler_reducer_goroutine() {
 					idle_reducer_hashmap[job_completed_ptr.Server_id] = working_reducer_hashmap[job_completed_ptr.Server_id]
 					delete(working_reducer_hashmap, job_completed_ptr.Server_id)
 				}
-				// TODO change this condition is wrong to check if it is the last job of the task
-				if len(working_reducer_hashmap) == 0 {
+				if len(task_ptr.Jobs) == 0 {
 				// last job of the task, thus the task ended
 					InfoLoggerPtr.Println("Reducer job", job_completed_ptr.Id, "task", job_completed_ptr.Task_id, "completed.")
 					state = IDLE
@@ -1055,8 +1051,7 @@ func scheduler_reducer_goroutine() {
 				}
 			}
 		case <-New_task_reducer_event_channel:
-			// TODO change it! BUG
-			if len(working_reducer_hashmap) == 0 { // if the curent task finished
+			if task_hashmap.Len() == 0 { // 1 task running each time
 				select {
 				case task_ptr := <-Task_reducer_channel:
 					// check for keys_x_servers update
@@ -1092,15 +1087,14 @@ func scheduler_reducer_goroutine() {
 					reducers_amount := MinOf_int32(task_ptr.Reducers_amount, int32(len(idle_reducer_hashmap)))
 					slice_size := 1
 					if reducers_amount == 0 { reducers_amount = 1 }
-					var slice_rest int32 = 0
+					var slice_reminder int32 = 0
 					// distributing the keys over the reducers
 					if keys_amount > reducers_amount {
 						if Check_float64_to_int_overflow(math.Abs(float64(keys_amount) / float64(reducers_amount))) {
 							ErrorLoggerPtr.Println("Overflow!!")
 						}
 						slice_size = int(math.Abs(float64(keys_amount) / float64(reducers_amount)))
-						// TODO change this variable name
-						slice_rest = keys_amount % reducers_amount
+						slice_reminder = keys_amount % reducers_amount
 					}
 					if reducers_amount == 0 { reducers_amount = 1 }
 
@@ -1118,9 +1112,9 @@ func scheduler_reducer_goroutine() {
 						for ; i < reducers_amount; i += 1 {
 							current_slice_size := slice_size
 							// distributing the remainder
-							if slice_rest > 0 {
+							if slice_reminder > 0 {
 								current_slice_size += 1
-								slice_rest -= 1
+								slice_reminder -= 1
 							}
 
 							keys := make(map[string]map[string]*Server)

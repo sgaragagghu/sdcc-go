@@ -66,14 +66,22 @@ func Parser_simple(point *[]float64, buffered_read *bufio.Reader, separate_prope
 		//InfoLoggerPtr.Println(string(char))
 		if char == separate_properties { // found a property
 			if j < len(*point)  {
-				(*point)[j - 1], _ = strconv.ParseFloat(s, 64) //TODO check the error
+				(*point)[j - 1], err = strconv.ParseFloat(s, 64)
+				if err != nil {
+					WarningLoggerPtr.Println("overflow!")
+					err = nil
+				}
 				full_s = s + string(separate_properties)
 				s = "" //resetting the string since we have to append the next property value
 				j += 1
 			} else { ErrorLoggerPtr.Fatal("Parsing failed") }
 		} else if char == separate_entries { // entry has finished, retrieving the last property of the entry
 			if j == len(*point) {
-				(*point)[j - 1], _ = strconv.ParseFloat(s, 64) // TODO check the error
+				(*point)[j - 1], err = strconv.ParseFloat(s, 64)
+				if err != nil {
+					WarningLoggerPtr.Println("overflow!")
+					err = nil
+				}
 				full_s += s + string(separate_entries)
 				break
 			} else { ErrorLoggerPtr.Fatal("Parsing failed") }
@@ -101,7 +109,7 @@ func Get_actual_begin(load_ptr *[]byte, separate_entries byte) (int64, error) {
 }
 // Searching the last entry, that is the first entry after the offset (length of the slice)
 func Get_actual_end(load_ptr *[]byte, separate_entries byte, offset int64) (int64, error) {
-	reader := bytes.NewReader((*load_ptr)[offset - 1:]) //TODO check error
+	reader := bytes.NewReader((*load_ptr)[offset - 1:])
 	buffered_read := bufio.NewReader(reader)
 	found := false
 	var i int64 = -1
@@ -239,9 +247,11 @@ func Get_file_size(url string) (int64) {
 	 req.Header.Add("Range", "bytes=" +  strconv.FormatInt(begin, 10) + "-" + strconv.FormatInt(end, 10))
 	 //fmt.Println(req)
 	 var client http.Client
-	 resp, _ := client.Do(req)
+	 resp, err := client.Do(req)
+	 if err != nil { ErrorLoggerPtr.Fatal(err) }
 	 //fmt.Println(resp)
-	 body, _ := ioutil.ReadAll(resp.Body) // TODO check the error
+	 body, err1 := ioutil.ReadAll(resp.Body)
+	 if err1 != nil { ErrorLoggerPtr.Fatal(err1) }
 	 //fmt.Println(len(body))
 	 return &body
  }
