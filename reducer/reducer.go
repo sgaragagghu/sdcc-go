@@ -314,6 +314,8 @@ func Reducer_main() {
 		if err != nil {
 			WarningLoggerPtr.Println(err)
 			time.Sleep( (EXPIRE_TIME / 2) * SECOND )
+		} else {
+			break
 		}
 	}
 
