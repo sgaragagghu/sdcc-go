@@ -498,6 +498,7 @@ func scheduler_mapper_goroutine() {
 							Id:task_ptr.Id,
 							Origin_id:task_ptr.Origin_id,
 							Send_time:task_ptr.Send_time,
+							Start_time:task_ptr.Start_time,
 							Resource_link:task_ptr.Resource_link,
 							Mappers_amount:task_ptr.Mappers_amount,
 							Margin:task_ptr.Margin,
@@ -616,6 +617,9 @@ func scheduler_mapper_goroutine() {
 			if process_new_task {
 				select {
 				case task_ptr := <-Task_mapper_channel:
+					if task_ptr.Start_time.IsZero() {
+						task_ptr.Start_time = time.Now()
+					}
 
 					// cleaning completed tasks
 					for _, task_map := range servers_x_tasks_x_jobs_done {
@@ -737,7 +741,7 @@ func iteration_algorithm_clustering(task_ptr *Task, new_task_ptr_ptr **Task, key
 		old_keys_x_values := task_ptr.Iteration_algorithm_parameters.([]interface{})[1].(map[string]interface{})
 		// check if the old iteration's result is equal to the current one
 		if iteration_algorithm_clustering_deep_equal(old_keys_x_values, keys_x_values, task_ptr.Iteration_algorithm_parameters.([]interface{})[0].(int)) {
-			InfoLoggerPtr.Println("Fixpoint found, iteration concluded")
+			InfoLoggerPtr.Println("Fixpoint found, iteration concluded in", time.Since(task_ptr.Start_time))
 			// printing the fix point
 			result_string := ""
 			for key, key_value_o := range keys_x_values {
@@ -778,6 +782,7 @@ func iteration_algorithm_clustering(task_ptr *Task, new_task_ptr_ptr **Task, key
 		Id:"-1",
 		Origin_id:task_ptr.Origin_id,
 		Send_time:0,
+		Start_time:task_ptr.Start_time,
 		Resource_link:task_ptr.Resource_link,
 		Mappers_amount:task_ptr.Mappers_amount,
 		Margin:task_ptr.Margin,

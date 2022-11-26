@@ -8,7 +8,7 @@ import (
 //	"reflect"
 //	"strings"
 //	. "../rpc_mapper"
-//	"time"
+	"time"
 
 
 	"github.com/elliotchance/orderedmap"
@@ -32,6 +32,7 @@ type Task struct {
 	Id string // task id
 	Origin_id string // task id of the first iteration
 	Send_time int64 // send time
+	Start_time time.Time // start time
 	Resource_link string // it is supposed that we are using an http resource link
 	Mappers_amount int32 // maximum amount of mappers to be used
 	Margin int8 // mapper doesn't download exactly its assigned slice but a bit more, it is explained in the mapper source code
