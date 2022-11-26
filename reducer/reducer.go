@@ -27,7 +27,6 @@ import (
 )
 
 var (
-	server *Server
 	master *Server
 	// data structure for calling functions by its name in a string
 	stub_storage StubMapping
@@ -42,8 +41,8 @@ func heartbeat_goroutine(client *rpc.Client) {
 	)
 
 	for {
-		server.Last_heartbeat = time.Now()
-		err = client.Call("Master_handler.Send_heartbeat", server, &reply)
+		This_server.Last_heartbeat = time.Now()
+		err = client.Call("Master_handler.Send_heartbeat", This_server, &reply)
 		if err != nil {
 			ErrorLoggerPtr.Fatal("Heartbeat error:", err)
 		}
@@ -92,7 +91,7 @@ func job_manager_goroutine(job_ptr *Job, chan_ptr *chan *Job) {
 			if !ok {
 				keys := make([]string, 1)
 				keys[0] = job_ptr.Task_id
-				value_ptr = &Request{server, v, 0, time.Now(), keys}
+				value_ptr = &Request{This_server, v, 0, time.Now(), keys}
 				requests_map.Set(index, value_ptr)
 
 			}
@@ -302,7 +301,7 @@ func init() {
 		ErrorLoggerPtr.Fatal("Empty ID."/*, err*/)
 	}
 
-	server = &Server{id, ip, REDUCER_PORT, time.Now(), "REDUCER"}
+	This_server = &Server{id, ip, REDUCER_PORT, time.Now(), "REDUCER"}
 	master = &Server{"", MASTER_IP, MASTER_PORT, time.Now(), "MASTER"}
 }
 

@@ -287,7 +287,7 @@ func heartbeat_goroutine() {
 					default:
 						ErrorLoggerPtr.Fatal("Add_reducer_channel is full")
 					}
-				} else { ErrorLoggerPtr.Fatal("Unexpected kinf of role:", server_temp_ptr.Role) }
+				} else { ErrorLoggerPtr.Fatal("Unexpected kind of role:", server_temp_ptr.Role) }
 			}
 			linked_hashmap.Set(server_temp_ptr.Id, server_temp_ptr) // TODO is it efficient ?
 			//InfoLoggerPtr.Println("Received heartbeat from mapper:", server_temp_ptr.Id)
@@ -435,6 +435,13 @@ func scheduler_mapper_goroutine() {
 		case job_completed_ptr := <-Job_mapper_completed_channel:
 			task_ptr_o, present := task_hashmap.Get(job_completed_ptr.Task_id)
 			if !present { break } // Same case as { continue } few line above
+			{	// receiveing a job from a removed server
+				_, ok := working_mapper_hashmap[job_completed_ptr.Server_id]
+				if !ok {
+					_, ok = idle_mapper_hashmap[job_completed_ptr.Server_id]
+					if !ok { break }
+				}
+			}
 			task_ptr := task_ptr_o.(*Task)
 			// moving the job from the to-do jobs data structure to the done jobs data structure
 			{
@@ -766,7 +773,6 @@ func iteration_algorithm_clustering(task_ptr *Task, new_task_ptr_ptr **Task, key
 	if task_ptr.Origin_id == "-1" { task_ptr.Origin_id = task_ptr.Id }
 
 	*new_task_ptr_ptr = &Task{
-
 		Id:"-1",
 		Origin_id:task_ptr.Origin_id,
 		Send_time:0,

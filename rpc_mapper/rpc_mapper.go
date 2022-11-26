@@ -20,9 +20,15 @@ var (
 
 // create a type to get an interface
 type Mapper_handler int
-// Used by the master ti send jobs to the mapper
+// Used by the master to send jobs to the mapper
 func (h Mapper_handler) Send_job(args *Job, reply *interface{}) error {
+	server_id := args.Server_id
+	if This_server.Id != server_id {
+		*reply = false
+		return nil
+	}
 	Job_channel <- args
+	*reply = true
 	return nil
 }
 // Used by the master to notify that a task has been fully completed and its data can be deleted
