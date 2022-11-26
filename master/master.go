@@ -338,7 +338,7 @@ func assign_job_mapper(server_ptr *Server, job_ptr *Job, working_mapper_hashmap 
 	}
 	InfoLoggerPtr.Println("Job", job_ptr.Id, "assigned to mapper", job_ptr.Server_id)
 	go Rpc_job_goroutine(server_ptr, job_ptr, "Mapper_handler.Send_job",
-		"Sent mapper job " + job_ptr.Id + " task " + job_ptr.Task_id,
+		"Sent mapper job " + job_ptr.Id + " [begin " + fmt.Sprint(job_ptr.Begin) + ", end " + fmt.Sprint(job_ptr.End) + "] task " + job_ptr.Task_id,
 		3, EXPIRE_TIME, false)
 }
 
@@ -357,6 +357,7 @@ func scheduler_mapper_goroutine() {
 	for {
 		select {
 		case rem_mapper_ptr := <-rem_mapper_channel:
+			InfoLoggerPtr.Println("Mapper", rem_mapper_ptr.Id, "ip", rem_mapper_ptr.Ip, "port", rem_mapper_ptr.Port, "is being removed.")
 			// removing a mapper
 			delete(idle_mapper_hashmap, rem_mapper_ptr.Id)
 			// data structure to store the new keys_x_servers variable
@@ -416,7 +417,7 @@ func scheduler_mapper_goroutine() {
 			delete(servers_x_tasks_x_jobs_done, rem_mapper_ptr.Id)
 		// adding a new mapper
 		case add_mapper_ptr := <-add_mapper_channel:
-			InfoLoggerPtr.Println("Mapper", add_mapper_ptr.Id, "ip", add_mapper_ptr.Ip, "port", add_mapper_ptr.Port, "is being added")
+			InfoLoggerPtr.Println("Mapper", add_mapper_ptr.Id, "ip", add_mapper_ptr.Ip, "port", add_mapper_ptr.Port, "is being added.")
 			// preparing data structures
 			servers_x_tasks_x_jobs[add_mapper_ptr.Id] = make(map[string]map[string]*Job)
 			servers_x_tasks_x_jobs_done[add_mapper_ptr.Id] = make(map[string]map[string]*Job)
@@ -472,6 +473,7 @@ func scheduler_mapper_goroutine() {
 				//server_light := Server{server.Id, server.Ip, server.Port, server.Last_heartbeat, server.Role}
 				value.(map[string]*Server)[job_completed_ptr.Server_id] = server //&server_light
 			}
+			InfoLoggerPtr.Println("Mapper job", job_completed_ptr.Id, "completed, task", job_completed_ptr.Task_id, ".")
 			// checking if there are jobs to be assigned...
 			if len(servers_x_tasks_x_jobs[job_completed_ptr.Server_id]) == 0 { // worker is idle
 				for loop := true; loop; {
@@ -489,7 +491,7 @@ func scheduler_mapper_goroutine() {
 				// the task has been completed
 				if len(task_ptr.Jobs) == 0 {
 					if task_ptr.Send_time == 0 { // if the task has not been sent to the reducer phase already
-						InfoLoggerPtr.Println("Task mapper completed, job", job_completed_ptr.Id, "task", job_completed_ptr.Task_id, ".")
+						InfoLoggerPtr.Println("Map task", job_completed_ptr.Task_id, "completed.")
 						task_ptr.Send_time = time.Now().Unix()
 						// preparing the task for the reducer (we don want them to refer to the same data structure, we aren't using mutexes)
 						task_ptr2 := &Task{
@@ -842,8 +844,12 @@ func assign_job_reducer(server_ptr *Server, job_ptr *Job, working_reducer_hashma
 		}
 		job_map[job_ptr.Id] = job_ptr
 	}
+	keys := make([]string, 0)
+	for key, _ := range job_ptr.Keys_x_servers {
+		keys = append(keys, key)
+	}
 	go Rpc_job_goroutine(server_ptr, job_ptr, "Reducer_handler.Send_job",
-			"Sent reducer job " + job_ptr.Id + " task " + job_ptr.Task_id,
+	"Sent reducer job " + job_ptr.Id + " : " + fmt.Sprint(keys)  + " task " + job_ptr.Task_id,
 			3, EXPIRE_TIME, false)
 
 }
@@ -932,6 +938,7 @@ func scheduler_reducer_goroutine() {
 				}
 			}
 		case rem_reducer_ptr := <-rem_reducer_channel:
+			InfoLoggerPtr.Println("Reducer", rem_reducer_ptr.Id, "ip", rem_reducer_ptr.Ip, "port", rem_reducer_ptr.Port, "is being added.")
 			// removing a reducer
 			delete(idle_reducer_hashmap, rem_reducer_ptr.Id)
 			// data structure to store the new keys_x_servers variable
@@ -1017,6 +1024,8 @@ func scheduler_reducer_goroutine() {
 				delete(servers_x_tasks_x_jobs[job_completed_ptr.Server_id], job_completed_ptr.Task_id)
 			}
 
+			InfoLoggerPtr.Println("Reducer job", job_completed_ptr.Id, "completed, task", job_completed_ptr.Task_id, ".")
+
 			// checking if there are jobs to be assigned...
 			if len(servers_x_tasks_x_jobs[job_completed_ptr.Server_id]) == 0 { // worker is idle
 				if state != WAIT {
@@ -1034,7 +1043,7 @@ func scheduler_reducer_goroutine() {
 				}
 				if len(task_ptr.Jobs) == 0 {
 				// last job of the task, thus the task ended
-					InfoLoggerPtr.Println("Reducer job", job_completed_ptr.Id, "task", job_completed_ptr.Task_id, "completed.")
+					InfoLoggerPtr.Println("Reducer task", job_completed_ptr.Task_id, "completed.")
 					state = IDLE
 					select {
 					case task_reducer_completed_channel <-job_completed_ptr.Task_id:
