@@ -1,0 +1,350 @@
+master_1   | INFO: 2022/11/27 14:46:17 master.go:135: Seed:
+master_1   | INFO: 2022/11/27 14:46:17 master.go:143: [9.98612 -3.15906]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:143: [8.52541 -0.284341]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:143: [2.21115 -3.47823]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:143: [7.018 -0.437251]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:143: [2.1147 -1.88288]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:236: Task correctly injected
+master_1   | INFO: 2022/11/27 14:46:17 master.go:637: Scheduling mapper task: 68
+master_1   | INFO: 2022/11/27 14:46:17 master.go:339: Job 0 assigned to mapper 33c25f9865a5ff614c58f9b0a3ad090db384b84cb525a51cbfa4bba2f1acbf37
+master_1   | INFO: 2022/11/27 14:46:17 master.go:339: Job 1 assigned to mapper 43b7b25cc8e601c5305249909ef62f2736a2cd34a81be3a75675281399b039be
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent mapper job 1 [begin 7320, end 14640] task 68
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent mapper job 0 [begin 0, end 7320] task 68
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc000497a00}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:476: Mapper job 0 completed, task 68 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc000497b00}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:476: Mapper job 1 completed, task 68 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:494: Map task 68 completed.
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1103: Scheduling reducer task: 68
+master_1   | INFO: 2022/11/27 14:46:17 master.go:843: Job 0 assigned to reducer 4f9ee048cf3469f72a8e8f429471c7f4ee489dd17589bbf5e6535cd37b73c52c
+master_1   | INFO: 2022/11/27 14:46:17 master.go:843: Job 1 assigned to reducer 2867fbc78e58612e93a926fc7b91cea8f3a950944a65a43be838f9b0d59ed820
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent reducer job 0 : [0 1 3] task 68
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent reducer job 1 : [2 4] task 68
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc000497f00}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1032: Reducer job 0 completed, task 68 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc0000e8000}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1032: Reducer job 1 completed, task 68 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1051: Reducer task 68 completed.
+master_1   | INFO: 2022/11/27 14:46:17 master.go:807: Fixpoint not found yet, new_task created
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 0 value [9.075112910447753 -3.7998523880597017]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 1 value [8.94521539877301 0.7767361833742336]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 2 value [0.06176154772727283 -5.720773068181822]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 3 value [6.756754152542373 -0.21336339500000004]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 4 value [-0.9274337422962962 -0.6512868481481482]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:834: Task correctly injected
+master_1   | INFO: 2022/11/27 14:46:17 master.go:637: Scheduling mapper task: 69
+master_1   | INFO: 2022/11/27 14:46:17 share.go:154: Sent completed task notification map[68:{}] to the mapper 43b7b25cc8e601c5305249909ef62f2736a2cd34a81be3a75675281399b039be
+master_1   | INFO: 2022/11/27 14:46:17 master.go:339: Job 0 assigned to mapper 33c25f9865a5ff614c58f9b0a3ad090db384b84cb525a51cbfa4bba2f1acbf37
+master_1   | INFO: 2022/11/27 14:46:17 master.go:339: Job 1 assigned to mapper 43b7b25cc8e601c5305249909ef62f2736a2cd34a81be3a75675281399b039be
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent mapper job 1 [begin 7320, end 14640] task 69
+master_1   | INFO: 2022/11/27 14:46:17 share.go:154: Sent completed task notification map[68:{}] to the mapper 33c25f9865a5ff614c58f9b0a3ad090db384b84cb525a51cbfa4bba2f1acbf37
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent mapper job 0 [begin 0, end 7320] task 69
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc0000e9080}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc0000e9100}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:476: Mapper job 0 completed, task 69 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:476: Mapper job 1 completed, task 69 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:494: Map task 69 completed.
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1103: Scheduling reducer task: 69
+master_1   | INFO: 2022/11/27 14:46:17 master.go:843: Job 0 assigned to reducer 4f9ee048cf3469f72a8e8f429471c7f4ee489dd17589bbf5e6535cd37b73c52c
+master_1   | INFO: 2022/11/27 14:46:17 master.go:843: Job 1 assigned to reducer 2867fbc78e58612e93a926fc7b91cea8f3a950944a65a43be838f9b0d59ed820
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent reducer job 0 : [0 1 3] task 69
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent reducer job 1 : [4 2] task 69
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc0000e9580}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1032: Reducer job 0 completed, task 69 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc0000e9680}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1032: Reducer job 1 completed, task 69 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1051: Reducer task 69 completed.
+master_1   | INFO: 2022/11/27 14:46:17 master.go:807: Fixpoint not found yet, new_task created
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 0 value [8.830061645569616 -3.6315211392405056]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 1 value [8.93214973154363 1.3525685160402683]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 2 value [-0.10937436564417183 -5.920763558282208]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 3 value [6.75405504347826 -0.5137209705217388]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 4 value [-0.9167869797826088 -0.7030529311594204]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:834: Task correctly injected
+master_1   | INFO: 2022/11/27 14:46:17 master.go:637: Scheduling mapper task: 70
+master_1   | INFO: 2022/11/27 14:46:17 share.go:154: Sent completed task notification map[69:{}] to the mapper 43b7b25cc8e601c5305249909ef62f2736a2cd34a81be3a75675281399b039be
+master_1   | INFO: 2022/11/27 14:46:17 master.go:339: Job 0 assigned to mapper 33c25f9865a5ff614c58f9b0a3ad090db384b84cb525a51cbfa4bba2f1acbf37
+master_1   | INFO: 2022/11/27 14:46:17 master.go:339: Job 1 assigned to mapper 43b7b25cc8e601c5305249909ef62f2736a2cd34a81be3a75675281399b039be
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent mapper job 0 [begin 0, end 7320] task 70
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent mapper job 1 [begin 7320, end 14640] task 70
+master_1   | INFO: 2022/11/27 14:46:17 share.go:154: Sent completed task notification map[69:{}] to the mapper 33c25f9865a5ff614c58f9b0a3ad090db384b84cb525a51cbfa4bba2f1acbf37
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc0000e9e00}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc0000e9e80}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:476: Mapper job 1 completed, task 70 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:476: Mapper job 0 completed, task 70 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:494: Map task 70 completed.
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1103: Scheduling reducer task: 70
+master_1   | INFO: 2022/11/27 14:46:17 master.go:843: Job 0 assigned to reducer 4f9ee048cf3469f72a8e8f429471c7f4ee489dd17589bbf5e6535cd37b73c52c
+master_1   | INFO: 2022/11/27 14:46:17 master.go:843: Job 1 assigned to reducer 2867fbc78e58612e93a926fc7b91cea8f3a950944a65a43be838f9b0d59ed820
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent reducer job 0 : [2 4 3] task 70
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent reducer job 1 : [0 1] task 70
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc00044c400}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1032: Reducer job 1 completed, task 70 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc00044c500}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1032: Reducer job 0 completed, task 70 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1051: Reducer task 70 completed.
+master_1   | INFO: 2022/11/27 14:46:17 master.go:807: Fixpoint not found yet, new_task created
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 0 value [8.856064727272729 -3.5558247272727264]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 1 value [8.72753331034483 1.6518351627586207]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 2 value [-0.4303669391304353 -6.446671231884056]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 3 value [6.8786696491228065 -0.8160063273684214]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 4 value [-0.7345336468896323 -0.8715460836120401]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:834: Task correctly injected
+master_1   | INFO: 2022/11/27 14:46:17 master.go:637: Scheduling mapper task: 71
+master_1   | INFO: 2022/11/27 14:46:17 share.go:154: Sent completed task notification map[70:{}] to the mapper 43b7b25cc8e601c5305249909ef62f2736a2cd34a81be3a75675281399b039be
+master_1   | INFO: 2022/11/27 14:46:17 share.go:154: Sent completed task notification map[70:{}] to the mapper 33c25f9865a5ff614c58f9b0a3ad090db384b84cb525a51cbfa4bba2f1acbf37
+master_1   | INFO: 2022/11/27 14:46:17 master.go:339: Job 0 assigned to mapper 33c25f9865a5ff614c58f9b0a3ad090db384b84cb525a51cbfa4bba2f1acbf37
+master_1   | INFO: 2022/11/27 14:46:17 master.go:339: Job 1 assigned to mapper 43b7b25cc8e601c5305249909ef62f2736a2cd34a81be3a75675281399b039be
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent mapper job 0 [begin 0, end 7320] task 71
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent mapper job 1 [begin 7320, end 14640] task 71
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc00044cd00}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc00044cd80}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:476: Mapper job 0 completed, task 71 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:476: Mapper job 1 completed, task 71 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:494: Map task 71 completed.
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1103: Scheduling reducer task: 71
+master_1   | INFO: 2022/11/27 14:46:17 master.go:843: Job 0 assigned to reducer 4f9ee048cf3469f72a8e8f429471c7f4ee489dd17589bbf5e6535cd37b73c52c
+master_1   | INFO: 2022/11/27 14:46:17 master.go:843: Job 1 assigned to reducer 2867fbc78e58612e93a926fc7b91cea8f3a950944a65a43be838f9b0d59ed820
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent reducer job 0 : [0 1 3] task 71
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent reducer job 1 : [2 4] task 71
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc00044d200}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1032: Reducer job 1 completed, task 71 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc00044d300}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1032: Reducer job 0 completed, task 71 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1051: Reducer task 71 completed.
+master_1   | INFO: 2022/11/27 14:46:17 master.go:807: Fixpoint not found yet, new_task created
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 0 value [8.901356604938274 -3.567285413580246]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 1 value [8.620166783216785 1.7740146615384609]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 2 value [-1.7959270067415734 -8.255837191011237]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 3 value [7.031003781512606 -0.9832987589915966]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 4 value [-0.34385176557471286 -1.1909609454022991]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:834: Task correctly injected
+master_1   | INFO: 2022/11/27 14:46:17 master.go:637: Scheduling mapper task: 72
+master_1   | INFO: 2022/11/27 14:46:17 share.go:154: Sent completed task notification map[71:{}] to the mapper 43b7b25cc8e601c5305249909ef62f2736a2cd34a81be3a75675281399b039be
+master_1   | INFO: 2022/11/27 14:46:17 share.go:154: Sent completed task notification map[71:{}] to the mapper 33c25f9865a5ff614c58f9b0a3ad090db384b84cb525a51cbfa4bba2f1acbf37
+master_1   | INFO: 2022/11/27 14:46:17 master.go:339: Job 0 assigned to mapper 33c25f9865a5ff614c58f9b0a3ad090db384b84cb525a51cbfa4bba2f1acbf37
+master_1   | INFO: 2022/11/27 14:46:17 master.go:339: Job 1 assigned to mapper 43b7b25cc8e601c5305249909ef62f2736a2cd34a81be3a75675281399b039be
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent mapper job 0 [begin 0, end 7320] task 72
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent mapper job 1 [begin 7320, end 14640] task 72
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc00044da80}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc00044db00}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:476: Mapper job 0 completed, task 72 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:476: Mapper job 1 completed, task 72 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:494: Map task 72 completed.
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1103: Scheduling reducer task: 72
+master_1   | INFO: 2022/11/27 14:46:17 master.go:843: Job 0 assigned to reducer 4f9ee048cf3469f72a8e8f429471c7f4ee489dd17589bbf5e6535cd37b73c52c
+master_1   | INFO: 2022/11/27 14:46:17 master.go:843: Job 1 assigned to reducer 2867fbc78e58612e93a926fc7b91cea8f3a950944a65a43be838f9b0d59ed820
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent reducer job 1 : [2 4] task 72
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent reducer job 0 : [0 1 3] task 72
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc00044df80}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc000474080}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1032: Reducer job 0 completed, task 72 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1032: Reducer job 1 completed, task 72 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1051: Reducer task 72 completed.
+master_1   | INFO: 2022/11/27 14:46:17 master.go:807: Fixpoint not found yet, new_task created
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 0 value [8.908677295597489 -3.5996311132075482]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 1 value [8.508260735294119 1.9454323757352938]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 2 value [-1.97733521882353 -8.46729988235294]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 3 value [7.3019525 -1.02301108453125]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 4 value [-0.3067547433994335 -1.2238644730878183]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:834: Task correctly injected
+master_1   | INFO: 2022/11/27 14:46:17 master.go:637: Scheduling mapper task: 73
+master_1   | INFO: 2022/11/27 14:46:17 share.go:154: Sent completed task notification map[72:{}] to the mapper 43b7b25cc8e601c5305249909ef62f2736a2cd34a81be3a75675281399b039be
+master_1   | INFO: 2022/11/27 14:46:17 share.go:154: Sent completed task notification map[72:{}] to the mapper 33c25f9865a5ff614c58f9b0a3ad090db384b84cb525a51cbfa4bba2f1acbf37
+master_1   | INFO: 2022/11/27 14:46:17 master.go:339: Job 0 assigned to mapper 33c25f9865a5ff614c58f9b0a3ad090db384b84cb525a51cbfa4bba2f1acbf37
+master_1   | INFO: 2022/11/27 14:46:17 master.go:339: Job 1 assigned to mapper 43b7b25cc8e601c5305249909ef62f2736a2cd34a81be3a75675281399b039be
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent mapper job 0 [begin 0, end 7320] task 73
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent mapper job 1 [begin 7320, end 14640] task 73
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc000474800}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:476: Mapper job 0 completed, task 73 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc000474900}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:476: Mapper job 1 completed, task 73 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:494: Map task 73 completed.
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1103: Scheduling reducer task: 73
+master_1   | INFO: 2022/11/27 14:46:17 master.go:843: Job 0 assigned to reducer 4f9ee048cf3469f72a8e8f429471c7f4ee489dd17589bbf5e6535cd37b73c52c
+master_1   | INFO: 2022/11/27 14:46:17 master.go:843: Job 1 assigned to reducer 2867fbc78e58612e93a926fc7b91cea8f3a950944a65a43be838f9b0d59ed820
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent reducer job 0 : [3 0 1] task 73
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent reducer job 1 : [4 2] task 73
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc000474d00}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc000474e00}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1032: Reducer job 0 completed, task 73 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1032: Reducer job 1 completed, task 73 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1051: Reducer task 73 completed.
+master_1   | INFO: 2022/11/27 14:46:17 master.go:807: Fixpoint not found yet, new_task created
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 0 value [8.900554520547947 -3.7718621917808215]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 1 value [8.487286456692908 2.085203774015748]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 2 value [-1.9773352188235294 -8.467299882352943]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 3 value [7.5662518120805355 -1.0025041746308725]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 4 value [-0.2959582328248587 -1.2301920875706205]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:834: Task correctly injected
+master_1   | INFO: 2022/11/27 14:46:17 master.go:637: Scheduling mapper task: 74
+master_1   | INFO: 2022/11/27 14:46:17 share.go:154: Sent completed task notification map[73:{}] to the mapper 43b7b25cc8e601c5305249909ef62f2736a2cd34a81be3a75675281399b039be
+master_1   | INFO: 2022/11/27 14:46:17 share.go:154: Sent completed task notification map[73:{}] to the mapper 33c25f9865a5ff614c58f9b0a3ad090db384b84cb525a51cbfa4bba2f1acbf37
+master_1   | INFO: 2022/11/27 14:46:17 master.go:339: Job 0 assigned to mapper 33c25f9865a5ff614c58f9b0a3ad090db384b84cb525a51cbfa4bba2f1acbf37
+master_1   | INFO: 2022/11/27 14:46:17 master.go:339: Job 1 assigned to mapper 43b7b25cc8e601c5305249909ef62f2736a2cd34a81be3a75675281399b039be
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent mapper job 0 [begin 0, end 7320] task 74
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent mapper job 1 [begin 7320, end 14640] task 74
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc000475580}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc000475600}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:476: Mapper job 0 completed, task 74 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:476: Mapper job 1 completed, task 74 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:494: Map task 74 completed.
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1103: Scheduling reducer task: 74
+master_1   | INFO: 2022/11/27 14:46:17 master.go:843: Job 0 assigned to reducer 4f9ee048cf3469f72a8e8f429471c7f4ee489dd17589bbf5e6535cd37b73c52c
+master_1   | INFO: 2022/11/27 14:46:17 master.go:843: Job 1 assigned to reducer 2867fbc78e58612e93a926fc7b91cea8f3a950944a65a43be838f9b0d59ed820
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent reducer job 0 : [0 1 3] task 74
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent reducer job 1 : [2 4] task 74
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc000475a80}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1032: Reducer job 0 completed, task 74 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc000475b80}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1032: Reducer job 1 completed, task 74 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1051: Reducer task 74 completed.
+master_1   | INFO: 2022/11/27 14:46:17 master.go:807: Fixpoint not found yet, new_task created
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 0 value [8.891565703703698 -3.925456074074074]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 1 value [8.42328942148761 2.195381504132231]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 2 value [-1.9773352188235305 -8.467299882352942]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 3 value [7.76685393939394 -1.0145658467878793]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 4 value [-0.2849060406197186 -1.2367136591549304]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:834: Task correctly injected
+master_1   | INFO: 2022/11/27 14:46:17 master.go:637: Scheduling mapper task: 75
+master_1   | INFO: 2022/11/27 14:46:17 share.go:154: Sent completed task notification map[74:{}] to the mapper 33c25f9865a5ff614c58f9b0a3ad090db384b84cb525a51cbfa4bba2f1acbf37
+master_1   | INFO: 2022/11/27 14:46:17 share.go:154: Sent completed task notification map[74:{}] to the mapper 43b7b25cc8e601c5305249909ef62f2736a2cd34a81be3a75675281399b039be
+master_1   | INFO: 2022/11/27 14:46:17 master.go:339: Job 0 assigned to mapper 33c25f9865a5ff614c58f9b0a3ad090db384b84cb525a51cbfa4bba2f1acbf37
+master_1   | INFO: 2022/11/27 14:46:17 master.go:339: Job 1 assigned to mapper 43b7b25cc8e601c5305249909ef62f2736a2cd34a81be3a75675281399b039be
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent mapper job 0 [begin 0, end 7320] task 75
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent mapper job 1 [begin 7320, end 14640] task 75
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc000442300}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:476: Mapper job 1 completed, task 75 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc000442400}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:476: Mapper job 0 completed, task 75 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:494: Map task 75 completed.
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1103: Scheduling reducer task: 75
+master_1   | INFO: 2022/11/27 14:46:17 master.go:843: Job 0 assigned to reducer 4f9ee048cf3469f72a8e8f429471c7f4ee489dd17589bbf5e6535cd37b73c52c
+master_1   | INFO: 2022/11/27 14:46:17 master.go:843: Job 1 assigned to reducer 2867fbc78e58612e93a926fc7b91cea8f3a950944a65a43be838f9b0d59ed820
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent reducer job 0 : [2 4 0] task 75
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent reducer job 1 : [1 3] task 75
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc000442800}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc000442900}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1032: Reducer job 0 completed, task 75 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1032: Reducer job 1 completed, task 75 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1051: Reducer task 75 completed.
+master_1   | INFO: 2022/11/27 14:46:17 master.go:807: Fixpoint not found yet, new_task created
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 0 value [8.860063410852714 -4.020938759689923]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 1 value [8.332469826086955 2.3076831999999996]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 2 value [-1.97733521882353 -8.467299882352945]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 3 value [7.909198192090396 -1.0078036198870057]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 4 value [-0.28490604061971825 -1.23671365915493]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:834: Task correctly injected
+master_1   | INFO: 2022/11/27 14:46:17 master.go:637: Scheduling mapper task: 76
+master_1   | INFO: 2022/11/27 14:46:17 share.go:154: Sent completed task notification map[75:{}] to the mapper 43b7b25cc8e601c5305249909ef62f2736a2cd34a81be3a75675281399b039be
+master_1   | INFO: 2022/11/27 14:46:17 master.go:339: Job 0 assigned to mapper 33c25f9865a5ff614c58f9b0a3ad090db384b84cb525a51cbfa4bba2f1acbf37
+master_1   | INFO: 2022/11/27 14:46:17 master.go:339: Job 1 assigned to mapper 43b7b25cc8e601c5305249909ef62f2736a2cd34a81be3a75675281399b039be
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent mapper job 1 [begin 7320, end 14640] task 76
+master_1   | INFO: 2022/11/27 14:46:17 share.go:154: Sent completed task notification map[75:{}] to the mapper 33c25f9865a5ff614c58f9b0a3ad090db384b84cb525a51cbfa4bba2f1acbf37
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent mapper job 0 [begin 0, end 7320] task 76
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc000443080}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:476: Mapper job 1 completed, task 76 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc000443180}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:476: Mapper job 0 completed, task 76 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:494: Map task 76 completed.
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1103: Scheduling reducer task: 76
+master_1   | INFO: 2022/11/27 14:46:17 master.go:843: Job 0 assigned to reducer 4f9ee048cf3469f72a8e8f429471c7f4ee489dd17589bbf5e6535cd37b73c52c
+master_1   | INFO: 2022/11/27 14:46:17 master.go:843: Job 1 assigned to reducer 2867fbc78e58612e93a926fc7b91cea8f3a950944a65a43be838f9b0d59ed820
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent reducer job 0 : [2 4 0] task 76
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent reducer job 1 : [1 3] task 76
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc0000e8000}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc0000e8080}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1032: Reducer job 1 completed, task 76 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1032: Reducer job 0 completed, task 76 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1051: Reducer task 76 completed.
+master_1   | INFO: 2022/11/27 14:46:17 master.go:807: Fixpoint not found yet, new_task created
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 0 value [8.731032131147543 -4.162188524590167]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 1 value [8.285486818181818 2.3931353272727276]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 2 value [-1.9773352188235305 -8.467299882352943]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 3 value [8.066247724867727 -0.9902468715343913]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 4 value [-0.2849060406197185 -1.2367136591549297]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:834: Task correctly injected
+master_1   | INFO: 2022/11/27 14:46:17 master.go:637: Scheduling mapper task: 77
+master_1   | INFO: 2022/11/27 14:46:17 share.go:154: Sent completed task notification map[76:{}] to the mapper 43b7b25cc8e601c5305249909ef62f2736a2cd34a81be3a75675281399b039be
+master_1   | INFO: 2022/11/27 14:46:17 master.go:339: Job 0 assigned to mapper 33c25f9865a5ff614c58f9b0a3ad090db384b84cb525a51cbfa4bba2f1acbf37
+master_1   | INFO: 2022/11/27 14:46:17 master.go:339: Job 1 assigned to mapper 43b7b25cc8e601c5305249909ef62f2736a2cd34a81be3a75675281399b039be
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent mapper job 0 [begin 0, end 7320] task 77
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent mapper job 1 [begin 7320, end 14640] task 77
+master_1   | INFO: 2022/11/27 14:46:17 share.go:154: Sent completed task notification map[76:{}] to the mapper 33c25f9865a5ff614c58f9b0a3ad090db384b84cb525a51cbfa4bba2f1acbf37
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc0000e9280}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc0000e9300}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:476: Mapper job 0 completed, task 77 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:476: Mapper job 1 completed, task 77 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:494: Map task 77 completed.
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1103: Scheduling reducer task: 77
+master_1   | INFO: 2022/11/27 14:46:17 master.go:843: Job 0 assigned to reducer 4f9ee048cf3469f72a8e8f429471c7f4ee489dd17589bbf5e6535cd37b73c52c
+master_1   | INFO: 2022/11/27 14:46:17 master.go:843: Job 1 assigned to reducer 2867fbc78e58612e93a926fc7b91cea8f3a950944a65a43be838f9b0d59ed820
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent reducer job 0 : [0 1 3] task 77
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc0000e9780}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1032: Reducer job 0 completed, task 77 .
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent reducer job 1 : [2 4] task 77
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc0000e9880}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1032: Reducer job 1 completed, task 77 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1051: Reducer task 77 completed.
+master_1   | INFO: 2022/11/27 14:46:17 master.go:807: Fixpoint not found yet, new_task created
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 0 value [8.59097415929204 -4.334879203539821]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 1 value [8.219132380952388 2.4817098285714296]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 2 value [-1.9773352188235296 -8.467299882352942]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 3 value [8.213405467980287 -0.9972263779310344]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 4 value [-0.28490604061971847 -1.2367136591549295]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:834: Task correctly injected
+master_1   | INFO: 2022/11/27 14:46:17 master.go:637: Scheduling mapper task: 78
+master_1   | INFO: 2022/11/27 14:46:17 share.go:154: Sent completed task notification map[77:{}] to the mapper 33c25f9865a5ff614c58f9b0a3ad090db384b84cb525a51cbfa4bba2f1acbf37
+master_1   | INFO: 2022/11/27 14:46:17 share.go:154: Sent completed task notification map[77:{}] to the mapper 43b7b25cc8e601c5305249909ef62f2736a2cd34a81be3a75675281399b039be
+master_1   | INFO: 2022/11/27 14:46:17 master.go:339: Job 0 assigned to mapper 33c25f9865a5ff614c58f9b0a3ad090db384b84cb525a51cbfa4bba2f1acbf37
+master_1   | INFO: 2022/11/27 14:46:17 master.go:339: Job 1 assigned to mapper 43b7b25cc8e601c5305249909ef62f2736a2cd34a81be3a75675281399b039be
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent mapper job 0 [begin 0, end 7320] task 78
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent mapper job 1 [begin 7320, end 14640] task 78
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc00044c000}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc00044c080}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:476: Mapper job 1 completed, task 78 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:476: Mapper job 0 completed, task 78 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:494: Map task 78 completed.
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1103: Scheduling reducer task: 78
+master_1   | INFO: 2022/11/27 14:46:17 master.go:843: Job 0 assigned to reducer 4f9ee048cf3469f72a8e8f429471c7f4ee489dd17589bbf5e6535cd37b73c52c
+master_1   | INFO: 2022/11/27 14:46:17 master.go:843: Job 1 assigned to reducer 2867fbc78e58612e93a926fc7b91cea8f3a950944a65a43be838f9b0d59ed820
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent reducer job 0 : [2 4 0] task 78
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent reducer job 1 : [1 3] task 78
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc00044c600}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1032: Reducer job 1 completed, task 78 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc00044c700}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1032: Reducer job 0 completed, task 78 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1051: Reducer task 78 completed.
+master_1   | INFO: 2022/11/27 14:46:17 master.go:807: Fixpoint not found yet, new_task created
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 0 value [8.521532777777775 -4.424932962962965]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 1 value [8.147611568627452 2.5356748921568624]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 2 value [-1.9773352188235298 -8.46729988235294]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 3 value [8.29255151658768 -1.0068476384834124]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:812: key 4 value [-0.2849060406197181 -1.236713659154929]
+master_1   | INFO: 2022/11/27 14:46:17 master.go:834: Task correctly injected
+master_1   | INFO: 2022/11/27 14:46:17 master.go:637: Scheduling mapper task: 79
+master_1   | INFO: 2022/11/27 14:46:17 share.go:154: Sent completed task notification map[78:{}] to the mapper 33c25f9865a5ff614c58f9b0a3ad090db384b84cb525a51cbfa4bba2f1acbf37
+master_1   | INFO: 2022/11/27 14:46:17 share.go:154: Sent completed task notification map[78:{}] to the mapper 43b7b25cc8e601c5305249909ef62f2736a2cd34a81be3a75675281399b039be
+master_1   | INFO: 2022/11/27 14:46:17 master.go:339: Job 0 assigned to mapper 33c25f9865a5ff614c58f9b0a3ad090db384b84cb525a51cbfa4bba2f1acbf37
+master_1   | INFO: 2022/11/27 14:46:17 master.go:339: Job 1 assigned to mapper 43b7b25cc8e601c5305249909ef62f2736a2cd34a81be3a75675281399b039be
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent mapper job 0 [begin 0, end 7320] task 79
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent mapper job 1 [begin 7320, end 14640] task 79
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc00044cf00}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc00044cf80}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:476: Mapper job 0 completed, task 79 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:476: Mapper job 1 completed, task 79 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:494: Map task 79 completed.
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1103: Scheduling reducer task: 79
+master_1   | INFO: 2022/11/27 14:46:17 master.go:843: Job 0 assigned to reducer 4f9ee048cf3469f72a8e8f429471c7f4ee489dd17589bbf5e6535cd37b73c52c
+master_1   | INFO: 2022/11/27 14:46:17 master.go:843: Job 1 assigned to reducer 2867fbc78e58612e93a926fc7b91cea8f3a950944a65a43be838f9b0d59ed820
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent reducer job 1 : [4 2] task 79
+master_1   | INFO: 2022/11/27 14:46:17 share.go:201: Sent reducer job 0 : [3 0 1] task 79
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc00044d400}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1312: received message *net.TCPConn &{{0xc00044d500}}
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1032: Reducer job 1 completed, task 79 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1032: Reducer job 0 completed, task 79 .
+master_1   | INFO: 2022/11/27 14:46:17 master.go:1051: Reducer task 79 completed.
+master_1   | INFO: 2022/11/27 14:46:17 master.go:744: Fixpoint found, iteration concluded in 450.482855ms
+master_1   | INFO: 2022/11/27 14:46:17 share.go:154: Sent completed task notification map[79:{}] to the mapper 33c25f9865a5ff614c58f9b0a3ad090db384b84cb525a51cbfa4bba2f1acbf37
+master_1   | INFO: 2022/11/27 14:46:17 share.go:154: Sent completed task notification map[79:{}] to the mapper 43b7b25cc8e601c5305249909ef62f2736a2cd34a81be3a75675281399b039be
+

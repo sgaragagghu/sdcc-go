@@ -1,11 +1,11 @@
 curl -X POST					\
-	http://172.18.0.254:8080/rpc		\
+	http://100.27.4.24:8080/rpc		\
 	-H 'cache-control: no-cache'		\
 	-H 'content-type: application/json'	\
 	-d '{
 		"method": "JSONServer.Send_task",
 		"params": [{
-			"resource_link": "https://raw.githubusercontent.com/sgaragagghu/sdcc-clustering-datasets/master/sdcc/2d-4c.csv",
+			"resource_link": "https://raw.githubusercontent.com/sgaragagghu/sdcc-clustering-datasets/master/sdcc/2d-3c.csv",
 			"mappers_amount": 2,
 			"margin": 10,
 			"separate_entries": "\n",
@@ -13,7 +13,7 @@ curl -X POST					\
 			"properties_amount": 2,
 			"initialization_algorithm": "clustering",
 			"map_algorithm": "clustering",
-			"map_algorithm_parameters": [4],
+			"map_algorithm_parameters": [3],
 			"reducers_amount": 2,
 			"reduce_algorithm": "clustering",
 			"join_algorithm": "clustering",
