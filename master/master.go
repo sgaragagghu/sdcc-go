@@ -221,6 +221,7 @@ func task_injector_goroutine() {
 		select {
 		case slice := <-Task_from_JRPC_channel:
 			var reply error = nil
+			InfoLoggerPtr.Println("######################################################################")
 			task_ptr := ((*slice)[1]).(*Task)
 			// checking and initializing the the task
 			err1, err2 := Call("initialization_algorithm_" + task_ptr.Initialization_algorithm, stub_storage, task_ptr)
